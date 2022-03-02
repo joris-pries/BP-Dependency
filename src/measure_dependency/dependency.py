@@ -74,29 +74,35 @@ def bin_data(x, bins= 'auto', rrange= None, midways= True):
 
 # Function used to kde
 def kde_data(x, bw_method):
+    """
+    This function determines the kernel density estimation using `scipy.stats.gaussian_kde`.
+    """
     x = np.squeeze(x).T
     f_x = scs.gaussian_kde(x, bw_method= bw_method)
     return(f_x)
 
 # Function to get the probabibility density function
 def convert_variable_to_prob_density_function(x):
+    """
+    This function converts `x` into a dictionary and counts how often each row occurs.
+    """
     return(pd.DataFrame(x).value_counts(normalize=True).to_dict())
 
 # %%
 
-def unordered_bp_dependency(X_discrete_indices, X_continuous_indices, Y_discrete_indices, Y_continuous_indices, local_dataset, kde_strategy, **kwargs) -> float:
-    dep = 0
+def unordered_bp_dependency(dataset, Y_indices, X_indices, kde_indices= None, binning_indices= None, binning_strategy = 'auto', kde_strategy = None) -> float:
     """
-    This function is used for the `dependency' function and determines the unordered Berkelmans-Pries dependency of Y and X (notation: UD(Y,X)) for a given dataset. It is assumed that the discrete variables are already binned.
+    This function is used for the `dependency' function and determines the unordered Berkelmans-Pries dependency of Y and X (notation: UD(Y,X)) for a given dataset.
 
     Args:
     --------
-        X_discrete_indices (array_like): 1-dimensional list/numpy.ndarray containing the discrete indices for the X variable.
-        X_continous_indices (array_like): 1-dimensional list/numpy.ndarray containing the continous indices for the X variable.
-        Y_discrete_indices (array_like): 1-dimensional list/numpy.ndarray containing the discrete indices for the Y variable.
-        Y_continous_indices (array_like): 1-dimensional list/numpy.ndarray containing the continous indices for the Y variable.
-        local_dataset (numpy.ndarray): a local copy of the dataset.
-        kde_strategy (dictionary): See scipy.stats.gaussian_kde. Dictionary of bandwidths for each continuous variable.
+        dataset (numpy.ndarray): MxK array containing M samples of K variables.
+        Y_indices (array_like): 1-dimensional list/numpy.ndarray containing the indices for the Y variable.
+        X_indices (array_like): 1-dimensional list/numpy.ndarray containing the indices for the X variable.
+        kde_indices (array_like): Default is None. 1-dimensional list/numpy.ndarray containing the indices for kernel density estimation.
+        binning_indices (array_like): Default is None. 1-dimensional list/numpy.ndarray containing the indices for data binning.
+        binning_strategy (dictionary or number or str): Default is `auto`. See numpy.histogram_bin_edges. Dictionary if for each binning index a specific strategy should be applied.
+        kde_strategy (dictionary or number or str): Default is `None`. See scipy.stats.gaussian_kde. Dictionary if for each continuous variable a specific bandwidth should be applied.
     Returns:
     --------
         float: The unordered Berkelmans-Pries dependency score of Y and X
@@ -114,6 +120,13 @@ def unordered_bp_dependency(X_discrete_indices, X_continuous_indices, Y_discrete
     --------
         >>> test
     """
+
+    # copy dataset to local dataset
+    local_dataset = dataset.copy()
+
+    # initialization dep variable
+    dep = 0
+
 
     if (X_discrete_indices is not None):
         X_d = local_dataset[:, X_discrete_indices]
@@ -183,15 +196,15 @@ def unordered_bp_dependency(X_discrete_indices, X_continuous_indices, Y_discrete
 
 
 
-def bp_dependency(Y_indices, X_indices, dataset, kde_indices= None, binning_indices= None, binning_strategy = 'auto', kde_strategy = None, **kwargs) -> float:
+def bp_dependency(dataset, Y_indices, X_indices, kde_indices= None, binning_indices= None, binning_strategy = 'auto', kde_strategy = None) -> float:
     """
     This function determines the Berkelmans-Pries dependency of Y on X (notation: Dep(Y|X)) for a given dataset. Continuous variables need to be estimated using kernel density estimation or discretized using data binning.
 
     Args:
     --------
+        dataset (numpy.ndarray): MxK array containing M samples of K variables.
         Y_indices (array_like): 1-dimensional list/numpy.ndarray containing the indices for the Y variable.
         X_indices (array_like): 1-dimensional list/numpy.ndarray containing the indices for the X variable.
-        dataset (numpy.ndarray): MxK array containing M samples of K variables.
         kde_indices (array_like): Default is None. 1-dimensional list/numpy.ndarray containing the indices for kernel density estimation.
         binning_indices (array_like): Default is None. 1-dimensional list/numpy.ndarray containing the indices for data binning.
         binning_strategy (dictionary or number or str): Default is `auto`. See numpy.histogram_bin_edges. Dictionary if for each binning index a specific strategy should be applied.
@@ -277,13 +290,13 @@ def bp_dependency(Y_indices, X_indices, dataset, kde_indices= None, binning_indi
 
 
 
-    numerator = unordered_bp_dependency(X_discrete_indices= X_discrete_indices, X_continuous_indices= X_continuous_indices, Y_discrete_indices= Y_discrete_indices, Y_continuous_indices= Y_continuous_indices, local_dataset= local_dataset, kde_strategy= kde_strategy )
+    numerator = unordered_bp_dependency(dataset= local_dataset, X_discrete_indices= X_discrete_indices, X_continuous_indices= X_continuous_indices, Y_discrete_indices= Y_discrete_indices, Y_continuous_indices= Y_continuous_indices, kde_strategy= kde_strategy )
 
     # if Y consists only of continuous variables, the denominator is always 2.
     if Y_discrete_indices is None:
         denominator = 2
     else:
-        denominator = unordered_bp_dependency(X_discrete_indices= Y_discrete_indices, X_continuous_indices= Y_continuous_indices, Y_discrete_indices= Y_discrete_indices, Y_continuous_indices= Y_continuous_indices, local_dataset= local_dataset, kde_strategy= kde_strategy )
+        denominator = unordered_bp_dependency(dataset= local_dataset, X_discrete_indices= Y_discrete_indices, X_continuous_indices= Y_continuous_indices, Y_discrete_indices= Y_discrete_indices, Y_continuous_indices= Y_continuous_indices, kde_strategy= kde_strategy )
 
     return(numerator / denominator)
 
@@ -392,4 +405,13 @@ def bp_dependency(Y_indices, X_indices, dataset, kde_indices= None, binning_indi
 
 # %%
 
+# %%
+# Y_indices = [0]
+# X_indices = [1,2]
+# dataset = np.random.uniform(size = (5,6))
+# binning_indices = [0]
+# binning_strategy = int(1)
+
+#  # %%
+# bp_dependency(Y_indices= Y_indices, X_indices= X_indices, dataset= dataset, binning_indices= binning_indices, binning_strategy= binning_strategy) == -1
 # %%
