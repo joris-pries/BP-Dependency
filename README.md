@@ -76,6 +76,7 @@ Let the dataset be given by
 | 1 | 1 |
 | 2 | 0 |
 | 3 | 1 |
+
 where each row is as likely to be drawn. Then, `UD(X,Y)` can be determined by:
 
 ```python
