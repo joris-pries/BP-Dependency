@@ -81,7 +81,7 @@ where each row is as likely to be drawn. Then, `UD(X,Y)` can be determined by:
 
 ```python
  X_indices, Y_indices, dataset = (np.array([1]), np.array([0]), np.array([[0,0], [1,1], [2,0],[3,1]]))
-  print(unordered_bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
+ print(unordered_bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
 ```
 with output:
 ```python
@@ -124,7 +124,7 @@ where each row is as likely to be drawn. Then, `Dep(Y|X)` can be determined by:
 
 ```python
  X_indices, Y_indices, dataset = (np.array([1]), np.array([0]), np.array([[0,0], [1,1], [2,0],[3,1]]))
-  print(bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
+ print(bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
 ```
 with output:
 ```python
