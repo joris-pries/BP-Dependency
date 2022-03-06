@@ -107,7 +107,7 @@ def format_input_variables(**kwargs):
 
 
 # %%
-def unordered_bp_dependency(dataset, X_indices, Y_indices, binning_indices= None, binning_strategy = 'auto', midway_binning = False, return_binned_dataset = False, format_input = True) -> float:
+def unordered_bp_dependency(dataset, X_indices, Y_indices, binning_indices= None, binning_strategy = 'auto', midway_binning = False, format_input = True) -> float:
 
     """
     This function is used for the `dependency' function and determines the unordered Berkelmans-Pries dependency of Y and X (notation: UD(Y,X)) for a given dataset.
@@ -120,7 +120,6 @@ def unordered_bp_dependency(dataset, X_indices, Y_indices, binning_indices= None
         binning_indices (array_like, optional): 1-dimensional list / numpy.ndarray containing the indices that need to be binned. Default is `None`, which means that no variables are binned.
         binning_strategy (dictionary or number or str, optional): Default is `auto`. See numpy.histogram_bin_edges. Input a dictionary if for each binning index a specific strategy should be applied.
         midway_binning (bool, optional): Determines if the dataset is binned using the index of the bin (False) or the midway of the bin (True). Default is False.
-        return_binned_dataset (bool, optional): Determines if the binned dataset is returned. Default is False.
         format_input (bool, optional): Default is True. If False, no additional checks are done for the input.
 
 
@@ -178,14 +177,12 @@ def unordered_bp_dependency(dataset, X_indices, Y_indices, binning_indices= None
             p_X_d_Y_d_value = p_X_d_Y_d.get(X_d_key + Y_d_key, 0)
             dep += abs(p_X_d_Y_d_value - p_X_d_value * p_Y_d_value)
 
-    if return_binned_dataset:
-        return({'binned_dataset': local_dataset, 'unordered_bp_dependency' : dep})
-    elif not return_binned_dataset:
-        return(dep)
+
+    return(dep)
 
 
 # %%
-def bp_dependency(dataset, X_indices, Y_indices, binning_indices= None, binning_strategy = 'auto', midway_binning = False, return_binned_dataset = False, format_input = True) -> float:
+def bp_dependency(dataset, X_indices, Y_indices, binning_indices= None, binning_strategy = 'auto', midway_binning = False, format_input = True) -> float:
 
     """
     This function determines the Berkelmans-Pries dependency of Y on X (notation: Dep(Y|X)) for a given dataset.
@@ -198,7 +195,6 @@ def bp_dependency(dataset, X_indices, Y_indices, binning_indices= None, binning_
         binning_indices (array_like, optional): 1-dimensional list / numpy.ndarray containing the indices that need to be binned. Default is `None`, which means that no variables are binned.
         binning_strategy (dictionary or number or str, optional): Default is `auto`. See numpy.histogram_bin_edges. Input a dictionary if for each binning index a specific strategy should be applied.
         midway_binning (bool, optional): Determines if the dataset is binned using the index of the bin (False) or the midway of the bin (True). Default is False.
-        return_binned_dataset (bool, optional): Determines if the binned dataset is returned. Default is False.
         format_input (bool, optional): Default is True. If False, no additional checks are done for the input.
 
 
@@ -221,21 +217,15 @@ def bp_dependency(dataset, X_indices, Y_indices, binning_indices= None, binning_
         0.6666666666666666
     """
 
-    numerator_result = unordered_bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices, binning_indices= binning_indices, binning_strategy = binning_strategy, midway_binning = midway_binning, return_binned_dataset = return_binned_dataset, format_input = format_input)
+    numerator_result = unordered_bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices, binning_indices= binning_indices, binning_strategy = binning_strategy, midway_binning = midway_binning, format_input = format_input)
 
-    denominator_result = unordered_bp_dependency(dataset= dataset, X_indices= Y_indices, Y_indices= Y_indices, binning_indices= binning_indices, binning_strategy = binning_strategy, midway_binning = midway_binning, return_binned_dataset = return_binned_dataset, format_input = format_input)
+    denominator_result = unordered_bp_dependency(dataset= dataset, X_indices= Y_indices, Y_indices= Y_indices, binning_indices= binning_indices, binning_strategy = binning_strategy, midway_binning = midway_binning, format_input = format_input)
 
-    if return_binned_dataset:
-        if denominator_result['unordered_bp_dependency'] == 0.0:
-            return({'binned_dataset': numerator_result['binned_dataset'], 'bp_dependency' : -1.0})
-        else:
-            return({'binned_dataset': numerator_result['binned_dataset'], 'bp_dependency' : numerator_result['unordered_bp_dependency'] / denominator_result['unordered_bp_dependency']})
 
-    elif not return_binned_dataset:
-        if denominator_result == 0.0:
-            return(-1.0)
-        else:
-            return(numerator_result / denominator_result)
+    if denominator_result == 0.0:
+        return(-1.0)
+    else:
+        return(numerator_result / denominator_result)
 
 
 # %%
