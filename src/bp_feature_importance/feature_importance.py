@@ -136,6 +136,7 @@ def shapley_sequence(sequence_strategy, X_indices):
 
 #TODO: Functie die additional shapley values bepaald
 
+
 #TODO: Functie die shaples values blijft genereren tot een stop conditie
 def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 24, sequence_strategy= 'exhaustive', epsilon= 0.0, n_variables= np.inf, binning_indices= None, binning_strategy = 'auto', midway_binning = False, format_input = True):
 
@@ -145,8 +146,13 @@ def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 24,
 
     while not stop_generating_sequences(stopping_strategy= stopping_strategy):
         shap_sequence = shapley_sequence(sequence_strategy= sequence_strategy, X_indices= X_indices)
-        
-        print(sequence_counter)
+
+        old_dependency = 0
+        for index, seq_index in enumerate(shap_sequence):
+            X_shap_indices = shap_sequence[:(index + 1)]
+            #TODO: HIER BEN IK new_dependency = bp_dependency(X_indices= X_shap_indices, Y_indices=Y_indices, dataset= dataset)
+            if early_sequence_stopping(shapley_values_current_sequence= X_shap_indices, epsilon= epsilon, n_variables= n_variables):
+                break
 
     clear_globals()
     print("test")
