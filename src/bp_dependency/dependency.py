@@ -22,7 +22,7 @@ def bin_data(x, bins= 'auto', rrange= None, midways= True):
 
     Args:
     --------
-        x (array_like): 1-dimensional list/numpy.ndarray containing the values that need to be binned.
+        x (array_like): list/numpy.ndarray containing the values that need to be binned.
         bins (int or sequence of scalars or str, optional): Default is `auto`. See numpy.histogram_bin_edges for more information.
         rrange ((float, float), optional): Default is `None`. It is the lower and upper range of the bins. `None` simply determines the minimum and maximum of `x` as range.
         midways (bool, optional): Determines if the values are reduced to the midways of the bins (if True) or just the index of the bins (if False).
@@ -76,6 +76,7 @@ def convert_variable_to_prob_density_function(x):
     """
     This function converts `x` into a dictionary and counts how often each row occurs.
     """
+
     return(pd.DataFrame(x).value_counts(normalize=True).to_dict())
 
 # %%
