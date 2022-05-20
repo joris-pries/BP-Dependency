@@ -133,7 +133,7 @@ class feature_importance_class:
         self.dataset = np.asarray(dataset.copy())
         self.X_indices = X_indices
         self.X_indices = [X_index if isinstance(X_index, list) else [X_index] for X_index in X_indices]
-        self.Y_indices = np.asarray(Y_indices)      
+        self.Y_indices = np.asarray(Y_indices)
         self.stopping_strategy = stopping_strategy
         self.sequence_strategy = sequence_strategy
         self.epsilon = epsilon
@@ -180,7 +180,7 @@ class feature_importance_class:
 
 
         # strategy specific
-        if self.sequence_strategy == 'exhaustive':        
+        if self.sequence_strategy == 'exhaustive':
             self.sequence_array = list(itertools.permutations(self.X_indices))
             self.stopping_strategy = math.factorial(len(self.X_indices))
 
@@ -201,7 +201,7 @@ class feature_importance_class:
             return(True)
         if len(self.current_sequence) >= self.limit_n_variables:
             return(True)
-        
+
         return(False)
 
 
@@ -219,10 +219,10 @@ class feature_importance_class:
         try:
             self.UD_after = self.computed_ud_dependencies[frozenset(flatten_and_np_array(self.current_sequence))]
         except:
-            self.UD_after = unordered_bp_dependency(dataset= self.dataset, X_indices= flatten_and_np_array(self.current_sequence), Y_indices= self.Y_indices, binning_indices= None, format_input= False)      
+            self.UD_after = unordered_bp_dependency(dataset= self.dataset, X_indices= flatten_and_np_array(self.current_sequence), Y_indices= self.Y_indices, binning_indices= None, format_input= False)
             # Update computed dependecies dict
             self.computed_ud_dependencies[frozenset(flatten_and_np_array(self.current_sequence))] = self.UD_after
-        
+
 
         self.new_ud_value = self.UD_after - self.UD_before
 
@@ -268,9 +268,9 @@ class feature_importance_class:
     def compute_parallel(self):
 
         def parallel_ud(self, sequence):
-            UD_after = unordered_bp_dependency(dataset= self.dataset, X_indices= flatten_and_np_array(sequence), Y_indices= self.Y_indices, binning_indices= None, format_input= False)      
+            UD_after = unordered_bp_dependency(dataset= self.dataset, X_indices= flatten_and_np_array(sequence), Y_indices= self.Y_indices, binning_indices= None, format_input= False)
             self.computed_ud_dependencies[frozenset(flatten_and_np_array(sequence))] = UD_after
-            
+
         combinations_list = []
         for i in range(len(X_indices)):
             for comb in list(itertools.combinations(X_indices, i + 1)):
@@ -278,7 +278,7 @@ class feature_importance_class:
 
         with concurrent.futures.ProcessPoolExecutor() as executor:
             executor.map(parallel_ud, combinations_list)
-        
+
         return
 
 
@@ -314,7 +314,7 @@ def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120
 
         while(bp_class.early_sequence_stopping() == False):
             bp_class.next_variable_sequence()
-            
+
             #print("Current sequence: {}".format(bp_class.current_sequence))
 
             bp_class.determine_shapley_value()
@@ -323,9 +323,9 @@ def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120
 
     print('Average UD Shapley {}'.format(bp_class.average_shapley_values))
     print('Which sums up to: {}'.format(sum(bp_class.average_shapley_values.values())))
-    
+
     bp_class.divide_average_shapley_by_Y()
-    
+
     print("Average Dependency Shapley {}".format(bp_class.average_shapley_values))
     print('Which sums up to: {}'.format(sum(bp_class.average_shapley_values.values())))
 
@@ -336,17 +336,22 @@ def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120
     return(bp_class.average_shapley_values)
 
 # %%
-#if __name__ ==  '__main__':
-start = time.perf_counter()
-with cProfile.Profile() as pr:
-    bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 20000, sequence_strategy= 'random', epsilon= 0.0, limit_n_variables= 10, binning_indices= None, binning_strategy = 'auto', midway_binning = False, compute_parallel_ud= False)
+# #if __name__ ==  '__main__':
+# start = time.perf_counter()
+# with cProfile.Profile() as pr:
+#     bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 20000, sequence_strategy= 'random', epsilon= 0.0, limit_n_variables= 10, binning_indices= None, binning_strategy = 'auto', midway_binning = False, compute_parallel_ud= False)
 
-end = time.perf_counter()
-print(f'Finished in {round(end-start,2 )} second(s)')
+# end = time.perf_counter()
+# print(f'Finished in {round(end-start,2 )} second(s)')
 
-stats = pstats.Stats(pr)
-stats.sort_stats(pstats.SortKey.TIME)
-stats.dump_stats(filename='needs_profiling.prof')
+# stats = pstats.Stats(pr)
+# stats.sort_stats(pstats.SortKey.TIME)
+# stats.dump_stats(filename='needs_profiling.prof')
+
+
+
+
+
 
 # bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120, sequence_strategy= 'random', epsilon= 0.0, limit_n_variables= 2, binning_indices= None, binning_strategy = 'auto', midway_binning = False)
 

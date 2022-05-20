@@ -1,9 +1,20 @@
 import pytest
 import numpy as np
-# from bp_feature_importance.feature_importance import is_Y_constant, bin_data, unordered_bp_dependency, bp_dependency
+import sys
+sys.path.append('E:/OneDrive/PhD/GitHub/Official_Feature_Importance/src/bp_feature_importance')
+
+from all_fi_measures import *
 
 
+# def test_length_list_of_all_methods():
+#     assert len(list_of_all_methods) == 247
 
+
+ 
+# @pytest.mark.parametrize("name", list_of_all_methods)
+# def test_determine_fi(name):
+#     kwargs, fi_method_name = initialize_experiment_variables(name, data_path = 'E:/OneDrive/PhD/GitHub/Official_Feature_Importance/src/bp_feature_importance/datasets/decimal_system.pickle')
+#     assert len(determine_fi(fi_method_name, data_path = 'E:/OneDrive/PhD/GitHub/Official_Feature_Importance/src/bp_feature_importance/datasets/decimal_system.pickle', **kwargs)) == 3
 
 # @pytest.mark.parametrize("Y_indices, dataset, expected", [
 #     ([0], np.array([[1,2], [3,4], [5,6]]), False),
