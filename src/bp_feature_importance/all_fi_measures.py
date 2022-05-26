@@ -1,4 +1,5 @@
 # %%
+from torch import seed
 from feature_importance import bp_feature_importance
 import func_timeout
 import time
@@ -11,7 +12,7 @@ import pandas as pd
 import shap
 import random
 import pickle
-from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor, ExtraTreesClassifier, ExtraTreesRegressor, GradientBoostingClassifier, GradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor, ExtraTreesClassifier, ExtraTreesRegressor, GradientBoostingClassifier, GradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor, IsolationForest
 from scipy.stats import entropy, f_oneway, alexandergovern, pearsonr, spearmanr, pointbiserialr, kendalltau, weightedtau, somersd, linregress, siegelslopes, theilslopes, multiscale_graphcorr
 import rpy2
 from rpy2 import robjects
@@ -34,13 +35,15 @@ from qii.qii import QII
 from qii.qoi import QuantityOfInterest
 
 # TODO! Dit werkt nog niet op mn laptop
-# from rfi import rfi, cfi
+from rfi import rfi, cfi
 from fvecs.featurevec import FeatureVec
 from sklearn.feature_selection import chi2, f_classif, f_regression, r_regression, mutual_info_classif, mutual_info_regression
 from sklearn.decomposition import PCA
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier, ExtraTreeRegressor, ExtraTreeClassifier
 from rebelosa import modified_runExp
-
+from sklearn_relief import Relief, ReliefF, RReliefF
+from DIFFI.interpretability_module import diffi_ib
+import ITMO
 
 import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
@@ -51,6 +54,24 @@ from dependency import convert_variable_to_prob_density_function
 
 
 
+
+from contextlib import contextmanager
+import sys, os
+
+@contextmanager
+def suppress_stdout():
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = devnull
+        sys.stderr = devnull
+        try:  
+            yield
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+
 # %%
 # Download R packages (copied from https://rpy2.github.io/doc/latest/html/introduction.html)
 # import rpy2's package module
@@ -59,7 +80,7 @@ utils = rpackages.importr('utils')
 # select a mirror for R packages
 utils.chooseCRANmirror(ind=1)  # select the first mirror in the list
 # R package names
-packnames = ['infotheo', 'rfUtilities', 'randomForest', 'plyr']
+packnames = ['infotheo', 'rfUtilities', 'randomForest', 'plyr', 'mda']
 packnames += ['HDclassif', 'KRLS', 'LiblineaR', 'LogicReg', 'RRF', 'RSNNS',
        'RWeka', 'Rborist', 'ada', 'adabag', 'bartMachine', 'binda',
        'bnclassify', 'brnn', 'bst', 'caTools', 'deepboost', 'deepnet',
@@ -147,7 +168,7 @@ def create_dataset(creation, save_path, **kwargs):
 
 
 # %%
-# create_dataset('decimal_system', 'datasets/decimal_system.pickle', n_observations=200)
+# create_dataset('decimal_system', 'datasets/decimal_system_2000.pickle', n_observations=2000)
 # create_dataset('random_test', 'datasets/random_test.pickle', n_observations = 20000)
 # create_dataset('hiring_system', 'datasets/hiring_system.pickle', n_observations=200)
 # %%
@@ -393,9 +414,30 @@ list_of_all_methods += ['sunnies_' + i for i in ['R2','DC','BCDC','AIDC','HSIC']
 list_of_all_methods += ['rebelosa_classifier_' + i for i in ['RF', 'Garson_NN1', 'Garson_NN2', 'VIANN_NN1', 'VIANN_NN2', 'LOFO_NN1', 'LOFO_NN2']]
 # rebelosa_regressor
 list_of_all_methods += ['rebelosa_regressor_' + i for i in ['RF', 'Garson_NN1', 'Garson_NN2', 'VIANN_NN1', 'VIANN_NN2', 'LOFO_NN1', 'LOFO_NN2']]
+# relief_classifier
+list_of_all_methods += ['relief_classifier_' + i for i in ['Relief', 'ReliefF', 'RReliefF']]
+# relief_regressor
+list_of_all_methods += ['relief_regressor_' + i for i in ['Relief', 'ReliefF', 'RReliefF']]
+# DIFFI
+list_of_all_methods += ['DIFFI']
+# ITMO
+list_of_all_methods += ['ITMO_' + i for i in ["fit_criterion_measure", "f_ratio_measure", "gini_index", "su_measure", "spearman_corr", "pearson_corr", "fechner_corr", "kendall_corr", "chi2_measure", "anova", "laplacian_score",
+"information_gain", "modified_t_score"] + ["MIM", "MRMR", "JMI", "CIFE", "CMIM", "ICAP", "DCSF", "CFR", "MRI", "IWFS"] + ['NDFS', 'RFS', 'SPEC', 'MCFS', 'UDFS']]
+
 # %%
 
+# removed due to time constraints:
+for i in ['sage_classifier_PermutationEstimator_MLPClassifier',
+ 'sage_classifier_PermutationEstimator_XGBClassifier',
+ 'sage_classifier_PermutationEstimator_LGBMClassifier',
+ 'sage_classifier_KernelEstimator_XGBRFClassifier',
+ 'sage_classifier_KernelEstimator_CatBoostClassifier',
+ 'sage_classifier_KernelEstimator_LGBMClassifier']:
+    list_of_all_methods.remove(i)
 
+# %%
+
+# %%
 def initialize_experiment_variables(name, X, Y, labelencoded_Y):
     kwargs = {}
 
@@ -567,6 +609,10 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
 
     if 'R_pimp_regressor' == name:
         fi_method_name = 'R_pimp_regressor'
+
+
+    if 'DIFFI' == name:
+        fi_method_name = 'DIFFI'
 
 
     ###########################################################
@@ -982,6 +1028,29 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
         kwargs['method_name'] = name.split('_', 3)[2]
         if len(name.split('_', 3)) == 4:
             kwargs['model_name'] = name.split('_', 3)[3]
+
+    if 'relief_classifier' in name:
+        fi_method_name = 'relief_classifier'
+        kwargs['method'] = eval(name.split('_', 3)[2])
+
+    if 'relief_regressor' in name:
+        fi_method_name = 'relief_regressor'
+        kwargs['method'] = eval(name.split('_', 3)[2])
+
+
+    if 'ITMO' in name:
+        fi_method_name = 'ITMO'
+        method_name = name.split('_', 1)[1]
+
+        if method_name in ["MIM", "MRMR", "JMI", "CIFE", "CMIM", "ICAP", "DCSF", "CFR", "MRI", "IWFS"]:
+            kwargs['eval_string'] = 'ITMO.' + method_name + '(np.array([]), free_features= range(X.shape[1]), x= X, y= Y)'
+
+        if method_name in ["fit_criterion_measure", "f_ratio_measure", "gini_index", "su_measure", "spearman_corr", "pearson_corr", "fechner_corr", "kendall_corr", "chi2_measure", "anova", "laplacian_score", "information_gain", "modified_t_score"]:
+            kwargs['eval_string'] = 'ITMO.' + method_name + '(X,Y)'
+
+        if method_name in ['NDFS', 'RFS', 'SPEC', 'MCFS', 'UDFS']:
+            kwargs['eval_string'] = 'ITMO.' + method_name + '(X.shape[1]).fit(X,Y).feature_scores_'
+
 
     return kwargs, fi_method_name
 
@@ -1592,7 +1661,26 @@ def determine_fi(fi_method_name, data_path, **kwargs):
     if fi_method_name == 'rebelosa_regressor':
         fi_results = np.array(modified_runExp(method = kwargs['method_name'], X= X, Y= Y, isClassification= False, mdl= kwargs.get('model_name', 'NN1')))
 
-    return fi_results
+
+    if fi_method_name == 'relief_classifier':
+        r = kwargs['method'](n_features = X.shape[1], n_jobs = 1, categorical = range(X.shape[1])) # n_jobs is > 1 does not work
+        r.fit(X,labelencoded_Y)
+        fi_results = r.w_
+
+    if fi_method_name == 'relief_regressor':
+        r = kwargs['method'](n_features = X.shape[1], n_jobs = 1) # n_jobs is > 1 does not work
+        r.fit(X,Y)
+        fi_results = r.w_
+
+    if fi_method_name == 'DIFFI':
+        iforest = IsolationForest()
+        iforest.fit(X)
+        fi_results, _ = diffi_ib(iforest, X)
+
+    if fi_method_name == 'ITMO':
+        fi_results = eval(kwargs['eval_string'])
+
+    return np.asarray(fi_results)
 
 
 # %%
@@ -1643,13 +1731,14 @@ def determine_fi(fi_method_name, data_path, **kwargs):
 np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 result_dict = {}
 time_dict = {}
-X, Y, labelencoded_Y, onehotencoded_Y, dataset = load_dataset(data_path='datasets/decimal_system.pickle')
+X, Y, labelencoded_Y, onehotencoded_Y, dataset = load_dataset(data_path='datasets/decimal_system_2000.pickle')
 # %%
 did_not_work = []
 not_finished_in_time = []
 
+test_methods = list_of_all_methods
+# test_methods = [i for i in list_of_all_methods if 'rebelosa' in i]
 
-test_methods = [i for i in list_of_all_methods if 'rebelosa' in i]
 # test_methods = ['bp_feature_importance',
 #     'sage_classifier_PermutationEstimator_MLPClassifier',
 #  'sage_classifier_PermutationEstimator_XGBClassifier',
@@ -1676,36 +1765,41 @@ test_methods = [i for i in list_of_all_methods if 'rebelosa' in i]
 #         print('\033[91m', name)
 #         time.sleep(0.1)
 # %%
-time_limit = 3
-for name in test_methods:
-    kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
+time_limit = 60*60
 
-    print('\033[94m')
-    try:
-        start_time = time.time()
-        result = func_timeout.func_timeout(timeout = time_limit, func= determine_fi, kwargs=  kwargs| {'fi_method_name': fi_method_name, 'data_path':'datasets/decimal_system.pickle'})
-        end_time = time.time()
-        print("{} gives fi: {}".format(name, result))
-        result_dict[name] = result
-        time_dict[name] = end_time - start_time
-        assert len(result) == X.shape[1]
-        print('\033[92m', name)
-        time.sleep(0.1)
-    except func_timeout.FunctionTimedOut:
-        not_finished_in_time += [name]
-        result_dict[name] = np.array([np.nan] * X.shape[1])
-        time_dict[name] = '>{}'.format(time_limit)
-        print('\033[93m', name)
-        time.sleep(0.1)
-    except:
-        did_not_work += [name]
-        print('\033[91m', name)
-        time.sleep(0.1)
+for name in tqdm(test_methods):
+    with suppress_stdout():
+        kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
+
+        print('\033[94m')
+        try:
+            start_time = time.time()
+            
+            
+            result = func_timeout.func_timeout(timeout = time_limit, func= determine_fi, kwargs=  kwargs| {'fi_method_name': fi_method_name, 'data_path':'datasets/decimal_system_2000.pickle'})
+            
+            end_time = time.time()
+            print("{} gives fi: {}".format(name, result))
+            result_dict[name] = result
+            time_dict[name] = end_time - start_time
+            assert len(result) == X.shape[1]
+            print('\033[92m', name)
+            time.sleep(0.1)
+        except func_timeout.FunctionTimedOut:
+            not_finished_in_time += [name]
+            result_dict[name] = np.array([np.nan] * X.shape[1])
+            time_dict[name] = '>{}'.format(time_limit)
+            print('\033[93m', name)
+            time.sleep(0.1)
+        except:
+            did_not_work += [name]
+            print('\033[91m', name)
+            time.sleep(0.1)
 
 # %%
 name = 'rebelosa_classifier_LOFO_NN2'
 kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
-result = determine_fi(fi_method_name=fi_method_name, data_path='datasets/decimal_system.pickle', **kwargs)
+result = determine_fi(fi_method_name=fi_method_name, data_path='datasets/decimal_system_2000.pickle', **kwargs)
 print(len(result))
 # %%
 
@@ -1719,9 +1813,57 @@ X_3 = np.random.randint(10, size=kwargs['n_observations'])
 Y = X_1 + 10 * X_2 + 100 * X_3
 X = np.stack((X_1, X_2, X_3), axis=1)
 dataset = np.stack((X_1, X_2, X_3, Y), axis=1)
+# %%
 
-import sklearn_relief as relief
-r = relief.Relief(n_features = 3)
-r.fit(X,Y)
-print(r.w_)
+
+# for test in ["fit_criterion_measure", "f_ratio_measure", "gini_index", "su_measure", "spearman_corr", "pearson_corr", "fechner_corr", "kendall_corr", "chi2_measure", "anova", "laplacian_score",
+# "information_gain", "modified_t_score"]:
+#     print(eval('ITMO.'+ test)(X,Y))
+
+# # %%
+
+# for test in ["MIM", "MRMR", "JMI", "CIFE", "CMIM", "ICAP", "DCSF", "CFR", "MRI", "IWFS"]:
+#     print(eval('ITMO.'+test)(np.array([]), free_features= range(X.shape[1]), x= X, y= Y))
+
+
+#  # %%
+# for test in ['NDFS', 'RFS', 'SPEC', 'MCFS', 'UDFS']:
+#     print(eval('ITMO.'+ test)(X.shape[1]).fit(X,Y).feature_scores_)
+# # %%
+
+# # %%
+for name, result in result_dict.items():
+    result = np.array(result)
+    if result.shape != (3,):
+        print(name)
+# %%
+# with open('results/decimal_system_2000.pickle', 'wb') as f:
+#     pickle.dump([X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
+# %%
+# with open('results/decimal_system_2000.pickle', 'rb') as f:
+#     [X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods] = pickle.load(f)
+# %%
+# not_finished_in_time
+# # %%
+# sum = 0
+# for name, time in time_dict.items():
+#     if name not in not_finished_in_time:
+#         sum+=time
+# # %%
+a = pd.DataFrame(time_dict, index = [0])
+b = a.transpose()
+c = b[b[0].apply(lambda x: isinstance(x, float))]
+d = c.sort_values(by= 0, ascending = False)
+d
+# %%
+d[:].sum()
+# %%
+d[100:].index.values
+# %%
+sum = 0
+for i in b[0]:
+    if isinstance(i, float):
+        sum += i
+# %%
+
 # %%
