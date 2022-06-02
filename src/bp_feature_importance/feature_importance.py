@@ -1,17 +1,24 @@
 # %%
+from operator import index
 import numpy as np
-#import pandas as pd
+import pandas as pd
 import random
 import itertools
 import math
+import concurrent.futures
 import cProfile
 import pstats
+import time
 
 import sys
-sys.path.insert(0, 'E:/OneDrive/PhD/GitHub/Official_Dependency_Function/src')
+sys.path.append('E:/OneDrive/PhD/GitHub/Official_Dependency_Function/src/bp_dependency')
 
-from bp_dependency import *
-#from pyparsing import col
+
+from dependency import *
+#from bp_dependency import *
+
+
+
 
 
 #__all__ = ['bin_data', 'unordered_bp_dependency', 'bp_dependency']
@@ -28,60 +35,91 @@ def flatten_and_np_array(list_of_lists):
     return np.asarray(flatten(list_of_lists))
 
 # %%
-n_observations = 20000000
 
-# X_1 = np.random.uniform(low = 0.0, high= 1.0, size = n_observations)
-# X_2 = np.random.uniform(low = 0.0, high= 1.0, size = n_observations)
+n_observations = 2000000
 
-# Y = X_1 + 3 * X_2
-
-# X_indices= [0,1]
-# Y_indices = [2]
-# binning_indices = [0,1,2]
-# dataset = np.stack((X_1, X_2, Y), axis = 1)
-
-n_x_variables = 5
-X = np.random.randint(2, size=(n_observations, n_x_variables))
-Y_random_index = random.choices(range(n_x_variables), weights=[0.3, 0.05, 0.3, 0.15, 0.2], k= n_observations)
-Y = np.asarray([X[i, Y_random_index[i]] for i in range(n_observations)]).reshape((n_observations, 1))
-# %%
-S_0 = np.asarray([int(i == 0) for i in Y_random_index]).reshape((n_observations, 1))
-S_1 = np.asarray([int(i == 1) for i in Y_random_index]).reshape((n_observations, 1))
-S_2 = np.asarray([int(i == 2) for i in Y_random_index]).reshape((n_observations, 1))
-S_3 = np.asarray([int(i == 3) for i in Y_random_index]).reshape((n_observations, 1))
-S_4 = np.asarray([int(i == 4) for i in Y_random_index]).reshape((n_observations, 1))
-
-
-dataset = np.hstack((X,Y,S_0,S_1,S_2,S_3,S_4))
-X_indices = [[0,6], [1,7], [2,8],[3,9],[4,10]]
-Y_indices = [5]
-
-# %%
-
-# X_1 = np.random.randint(2, size=(n_observations, 1))
-# X_2 = np.random.randint(low = 2, high = 4, size=(n_observations, 1))
-# Y_random_index = np.asarray(random.choices(range(2), weights=[0.3, 0.7], k= n_observations))
-# Y = np.zeros(shape= (n_observations, 1))
-# for i in range(n_observations):
-#     Y[i,0] = X_1[i,0]
-#     if Y_random_index[i] == 1:
-#         Y[i,0] = X_2[i,0]
-
-
-# Y_random_index = Y_random_index[..., np.newaxis]
-# dataset = np.hstack((X_1, X_2, Y_random_index,Y))
-# X_indices = [0,1,2]
+# CASE 5
+data = pd.DataFrame([[0,0,0,0], [0,1,0,0], [1,0,1,0], [1,1,1,1]])
+randomly_selected_data = data.sample(n= n_observations, replace= True, weights=[0.1, 0.0, 0.4, 0.5], axis = 0)
+dataset = np.asarray(randomly_selected_data)
+X_indices= [0,1]
+Y_indices = [2]
 # Y_indices = [3]
 
+# # CASE 4
+# n_x_variables = 5
+# probs = [0.3, 0.05, 0.3, 0.15, 0.2]
+# Y_random_index = [0] * int(probs[0] * n_observations) + [1] * int(probs[1] * n_observations) + [2] * int(probs[2] * n_observations) + [3] * int(probs[3] * n_observations) + [4] * int(probs[4] * n_observations)
+
+# #X = np.random.randint(2, size=(n_observations, n_x_variables))
+# X_0 = np.random.randint(2, size= n_observations)
+# X_1 = np.random.randint(2, size= n_observations)
+# X_2 = np.random.randint(2, size= n_observations)
+# X_3 = np.random.randint(2, size= n_observations)
+# X_4 = np.random.randint(10, size= n_observations)
+# X = np.stack((X_0, X_1, X_2, X_3, X_4), axis = 1)
+
+# Y = np.asarray([X[i, Y_random_index[i]] for i in range(n_observations)]).reshape((n_observations, 1))
+# # %%
+# S_0 = np.asarray([int(i == 0) for i in Y_random_index]).reshape((n_observations, 1))
+# S_1 = np.asarray([int(i == 1) for i in Y_random_index]).reshape((n_observations, 1))
+# S_2 = np.asarray([int(i == 2) for i in Y_random_index]).reshape((n_observations, 1))
+# S_3 = np.asarray([int(i == 3) for i in Y_random_index]).reshape((n_observations, 1))
+# S_4 = np.asarray([int(i == 4) for i in Y_random_index]).reshape((n_observations, 1))
+# S = np.asarray(Y_random_index).reshape((n_observations, 1))
+
+# dataset = np.hstack((X,Y,S_0,S_1,S_2,S_3,S_4,S))
+# X_indices = [[0,6, 11], [1,7, 11], [2,8, 11],[3,9, 11],[4,10,11]]
+# Y_indices = [5]
+
+
+# # CASE 3
+# X_1 = np.random.randint(2, size = n_observations)
+# X_2 = np.random.randint(2, size = n_observations)
+# X_3 = np.random.randint(2, size = n_observations)
+# X_4 = np.random.randint(2, size = n_observations)
+
+# Y = X_1 + 2 * X_2 + 4 * X_3 + 8 * X_4
+
+# X_indices= [0,1,2,3]
+# Y_indices = [4]
+# binning_indices = None
+# dataset = np.stack((X_1, X_2, X_3, X_4, Y), axis = 1)
+
+
+# # CASE 2
+# X_1 = np.random.randint(10, size = n_observations)
+# X_2 = np.random.randint(10, size = n_observations)
+# X_3 = np.random.randint(10, size = n_observations)
+
+# Y = X_1 + 10 * X_2 + 100 * X_3
+
+# X_indices= [0,1,2]
+# Y_indices = [3]
+# binning_indices = None
+# dataset = np.stack((X_1, X_2, X_3, Y), axis = 1)
+
+
+# # CASE 1
+# n_x_variables = 5
+# X = np.random.randint(2, size=(n_observations, n_x_variables))
+# Y_random_index = random.choices(range(n_x_variables), weights=[0.3, 0.05, 0.3, 0.15, 0.2], k= n_observations)
+# Y = np.asarray([X[i, Y_random_index[i]] for i in range(n_observations)]).reshape((n_observations, 1))
+# # %%
+# S_0 = np.asarray([int(i == 0) for i in Y_random_index]).reshape((n_observations, 1))
+# S_1 = np.asarray([int(i == 1) for i in Y_random_index]).reshape((n_observations, 1))
+# S_2 = np.asarray([int(i == 2) for i in Y_random_index]).reshape((n_observations, 1))
+# S_3 = np.asarray([int(i == 3) for i in Y_random_index]).reshape((n_observations, 1))
+# S_4 = np.asarray([int(i == 4) for i in Y_random_index]).reshape((n_observations, 1))
+
+
+# dataset = np.hstack((X,Y,S_0,S_1,S_2,S_3,S_4))
+# X_indices = [[0,6], [1,7], [2,8],[3,9],[4,10]]
+# Y_indices = [5]
+
 # %%
 
-# S = np.random.randint(4, size = n_observations)
-# help_data = np.array([[0, 0], [1, 1], [2, 0], [3, 1]])
-# Y = np.array([help_data[S[i], 0] for i in range(n_observations)])
-# X =  np.array([help_data[S[i], 1] for i in range(n_observations)])
-# dataset = np.vstack((Y,X)).T
-# X_indices = [1]
-# Y_indices = [0]
+
 # %%
 
 
@@ -96,13 +134,6 @@ class feature_importance_class:
         self.X_indices = X_indices
         self.X_indices = [X_index if isinstance(X_index, list) else [X_index] for X_index in X_indices]
         self.Y_indices = np.asarray(Y_indices)
-        # self.grouped_X_indices = list(grouped_X_indices)
-        # self.grouped_X_indices_set = {elem[0]: elem for elem in grouped_X_indices}
-        # flattened_grouped_X_indices = [item for sublist in grouped_X_indices for item in sublist]
-        # help_set = {X_index: [X_index] for X_index in X_indices if X_index not in flattened_grouped_X_indices} 
-        # self.grouped_X_indices_set.update(help_set)
-        # self.reduced_X_indices = self.grouped_X_indices_set.keys()
-        
         self.stopping_strategy = stopping_strategy
         self.sequence_strategy = sequence_strategy
         self.epsilon = epsilon
@@ -149,7 +180,7 @@ class feature_importance_class:
 
 
         # strategy specific
-        if self.sequence_strategy == 'exhaustive':        
+        if self.sequence_strategy == 'exhaustive':
             self.sequence_array = list(itertools.permutations(self.X_indices))
             self.stopping_strategy = math.factorial(len(self.X_indices))
 
@@ -170,7 +201,7 @@ class feature_importance_class:
             return(True)
         if len(self.current_sequence) >= self.limit_n_variables:
             return(True)
-        
+
         return(False)
 
 
@@ -188,10 +219,10 @@ class feature_importance_class:
         try:
             self.UD_after = self.computed_ud_dependencies[frozenset(flatten_and_np_array(self.current_sequence))]
         except:
-            self.UD_after = unordered_bp_dependency(dataset= self.dataset, X_indices= flatten_and_np_array(self.current_sequence), Y_indices= self.Y_indices, binning_indices= None, format_input= False)      
+            self.UD_after = unordered_bp_dependency(dataset= self.dataset, X_indices= flatten_and_np_array(self.current_sequence), Y_indices= self.Y_indices, binning_indices= None, format_input= False)
             # Update computed dependecies dict
             self.computed_ud_dependencies[frozenset(flatten_and_np_array(self.current_sequence))] = self.UD_after
-        
+
 
         self.new_ud_value = self.UD_after - self.UD_before
 
@@ -234,13 +265,28 @@ class feature_importance_class:
         self.average_shapley_values = {frozenset(key): value / self.UD_Y_Y for key,value in self.average_shapley_values.items()}
 
 
+    def compute_parallel(self):
+
+        def parallel_ud(self, sequence):
+            UD_after = unordered_bp_dependency(dataset= self.dataset, X_indices= flatten_and_np_array(sequence), Y_indices= self.Y_indices, binning_indices= None, format_input= False)
+            self.computed_ud_dependencies[frozenset(flatten_and_np_array(sequence))] = UD_after
+
+        combinations_list = []
+        for i in range(len(X_indices)):
+            for comb in list(itertools.combinations(X_indices, i + 1)):
+                combinations_list.append(comb)
+
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            executor.map(parallel_ud, combinations_list)
+
+        return
+
 
 # %%
 
 
 
-# %%
-def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120, sequence_strategy= 'exhaustive', epsilon= 0.0, limit_n_variables= np.inf, binning_indices= None, binning_strategy = 'auto', midway_binning = False):
+def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120, sequence_strategy= 'exhaustive', epsilon= 0.0, limit_n_variables= np.inf, binning_indices= None, binning_strategy = 'auto', midway_binning = False, compute_parallel_ud = True):
 
     bp_class = feature_importance_class(
         dataset= dataset,
@@ -255,6 +301,10 @@ def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120
         midway_binning= midway_binning
         )
 
+
+    if compute_parallel_ud:
+        bp_class.compute_parallel()
+
     while(bp_class.stop_generating_sequences() == False):
 
         bp_class.generate_shapley_sequence()
@@ -264,7 +314,7 @@ def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120
 
         while(bp_class.early_sequence_stopping() == False):
             bp_class.next_variable_sequence()
-            
+
             #print("Current sequence: {}".format(bp_class.current_sequence))
 
             bp_class.determine_shapley_value()
@@ -273,26 +323,35 @@ def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120
 
     print('Average UD Shapley {}'.format(bp_class.average_shapley_values))
     print('Which sums up to: {}'.format(sum(bp_class.average_shapley_values.values())))
-    
+
     bp_class.divide_average_shapley_by_Y()
-    
+
     print("Average Dependency Shapley {}".format(bp_class.average_shapley_values))
     print('Which sums up to: {}'.format(sum(bp_class.average_shapley_values.values())))
 
     print('UD of all X_variables: {}'.format(bp_class.UD_all_X_Y))
     print('UD of Y, Y: {}'.format(bp_class.UD_Y_Y))
     print('Dependency of all X_variables: {}'.format(bp_class.UD_all_X_Y /bp_class.UD_Y_Y ))
-    print(bp_class.n_sequences_counter)
+    print("Number of sequences: {}".format(bp_class.n_sequences_counter))
     return(bp_class.average_shapley_values)
 
 # %%
-with cProfile.Profile() as pr:
-    bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 24, sequence_strategy= 'exhaustive', epsilon= 0.0, limit_n_variables= 5, binning_indices= None, binning_strategy = 'auto', midway_binning = False)
+# #if __name__ ==  '__main__':
+# start = time.perf_counter()
+# with cProfile.Profile() as pr:
+#     bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 20000, sequence_strategy= 'random', epsilon= 0.0, limit_n_variables= 10, binning_indices= None, binning_strategy = 'auto', midway_binning = False, compute_parallel_ud= False)
+
+# end = time.perf_counter()
+# print(f'Finished in {round(end-start,2 )} second(s)')
+
+# stats = pstats.Stats(pr)
+# stats.sort_stats(pstats.SortKey.TIME)
+# stats.dump_stats(filename='needs_profiling.prof')
 
 
-stats = pstats.Stats(pr)
-stats.sort_stats(pstats.SortKey.TIME)
-stats.dump_stats(filename='needs_profiling.prof')
+
+
+
 
 # bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120, sequence_strategy= 'random', epsilon= 0.0, limit_n_variables= 2, binning_indices= None, binning_strategy = 'auto', midway_binning = False)
 
@@ -324,4 +383,6 @@ stats.dump_stats(filename='needs_profiling.prof')
 # result_2 = [list(test_results[i].values())[1] for i in range(len(coefficients))]
 # plt.plot(coefficients, result_1)
 # plt.plot(coefficients, result_2, color = 'red')
+# %%
+
 # %%
