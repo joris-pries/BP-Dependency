@@ -684,4 +684,3 @@ class RReliefF(ReliefF):
         ) # Distances from pivot_row
 
         return dist.argsort()[1:self.k+1] # Sorted indices
-# %%

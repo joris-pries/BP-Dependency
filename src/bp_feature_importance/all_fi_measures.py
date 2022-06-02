@@ -1,8 +1,11 @@
 # %%
+import os
+from contextlib import contextmanager
 from torch import seed
 from feature_importance import bp_feature_importance
 import func_timeout
 import time
+import shutil
 from tqdm import tqdm
 from rpy2.robjects.vectors import StrVector
 import rpy2.robjects.packages as rpackages
@@ -10,6 +13,7 @@ import sys
 import numpy as np
 import pandas as pd
 import shap
+from datetime import datetime
 import random
 import pickle
 from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor, ExtraTreesClassifier, ExtraTreesRegressor, GradientBoostingClassifier, GradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor, IsolationForest
@@ -34,7 +38,6 @@ from lightgbm import LGBMClassifier, LGBMRegressor
 from qii.qii import QII
 from qii.qoi import QuantityOfInterest
 
-# TODO! Dit werkt nog niet op mn laptop
 from rfi import rfi, cfi
 from fvecs.featurevec import FeatureVec
 from sklearn.feature_selection import chi2, f_classif, f_regression, r_regression, mutual_info_classif, mutual_info_regression
@@ -49,14 +52,7 @@ import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
 
 sys.path.append('E:/OneDrive/PhD/GitHub/Official_Dependency_Function/src/bp_dependency')
-from dependency import convert_variable_to_prob_density_function
 
-
-
-
-
-from contextlib import contextmanager
-import sys, os
 
 @contextmanager
 def suppress_stdout():
@@ -65,7 +61,7 @@ def suppress_stdout():
         old_stderr = sys.stderr
         sys.stdout = devnull
         sys.stderr = devnull
-        try:  
+        try:
             yield
         finally:
             sys.stdout = old_stdout
@@ -81,18 +77,7 @@ utils = rpackages.importr('utils')
 utils.chooseCRANmirror(ind=1)  # select the first mirror in the list
 # R package names
 packnames = ['infotheo', 'rfUtilities', 'randomForest', 'plyr', 'mda']
-packnames += ['HDclassif', 'KRLS', 'LiblineaR', 'LogicReg', 'RRF', 'RSNNS',
-       'RWeka', 'Rborist', 'ada', 'adabag', 'bartMachine', 'binda',
-       'bnclassify', 'brnn', 'bst', 'caTools', 'deepboost', 'deepnet',
-       'evtree', 'extraTrees', 'fastAdaboost', 'fastICA', 'frbs', 'gam',
-       'glmnet', 'h2o', 'hda', 'keras', 'kerndwd', 'kknn',
-       'kohonen', 'leaps', 'monmlp', 'monomvn', 'msaenet', 'naivebayes',
-       'neuralnet', 'nodeHarvest', 'obliqueRF', 'ordinalForest',
-       'ordinalNet', 'pamr', 'penalized', 'penalizedLDA', 'plsRglm',
-       'protoclass', 'qrnn', 'quantregForest', 'rFerns', 'randomGLM', 'relaxo', 'robustDA', 'rocc',
-       'rotationForest', 'rpartScore', 'rqPen', 'rrcov', 'rrcovHD', 'sda',
-       'sdwd', 'snn', 'sparseLDA', 'sparsediscrim', 'spikeslab', 'spls',
-       'stepPlr', 'superpc', 'supervisedPRIM', 'wsrf', 'xgboost']
+packnames += ['HDclassif', 'KRLS', 'LiblineaR', 'LogicReg', 'RRF', 'RSNNS', 'RWeka', 'Rborist', 'ada', 'adabag', 'bartMachine', 'binda', 'bnclassify', 'brnn', 'bst', 'caTools', 'deepboost', 'deepnet', 'evtree', 'extraTrees', 'fastAdaboost', 'fastICA', 'frbs', 'gam', 'glmnet', 'h2o', 'hda', 'keras', 'kerndwd', 'kknn', 'kohonen', 'leaps', 'monmlp', 'monomvn', 'msaenet', 'naivebayes', 'neuralnet', 'nodeHarvest', 'obliqueRF', 'ordinalForest', 'ordinalNet', 'pamr', 'penalized', 'penalizedLDA', 'plsRglm', 'protoclass', 'qrnn', 'quantregForest', 'rFerns', 'randomGLM', 'relaxo', 'robustDA', 'rocc', 'rotationForest', 'rpartScore', 'rqPen', 'rrcov', 'rrcovHD', 'sda', 'sdwd', 'snn', 'sparseLDA', 'sparsediscrim', 'spikeslab', 'spls', 'stepPlr', 'superpc', 'supervisedPRIM', 'wsrf', 'xgboost', 'klaR', 'ranger', 'import', 'mboost']
 
 # R vector of strings
 # Selectively install what needs to be install.
@@ -119,6 +104,8 @@ FSinR = importr('FSinR')
 # %%
 
 # TODO: this only works for 1d array
+
+
 def convert_to_labelencoded(Y):
     label_encoder = LabelEncoder()
     label_encoder = label_encoder.fit(Y)
@@ -153,9 +140,25 @@ def create_dataset(creation, save_path, **kwargs):
         X = np.stack((X_1, X_2, X_3), axis=1)
         dataset = np.stack((X_1, X_2, X_3, Y), axis=1)
 
+    if creation == 'binary_system':
+        X_1 = np.random.randint(2, size=kwargs['n_observations'])
+        X_2 = np.random.randint(2, size=kwargs['n_observations'])
+        X_3 = np.random.randint(2, size=kwargs['n_observations'])
+        X_4 = np.random.randint(2, size=kwargs['n_observations'])
+        X_5 = np.random.randint(2, size=kwargs['n_observations'])
+        X_6 = np.random.randint(2, size=kwargs['n_observations'])
+        X_7 = np.random.randint(2, size=kwargs['n_observations'])
+        X_8 = np.random.randint(2, size=kwargs['n_observations'])
+        X_9 = np.random.randint(2, size=kwargs['n_observations'])
+        X_10 = np.random.randint(2, size=kwargs['n_observations'])
+        
+        Y = X_1 + 2 * X_2 + 4 * X_3 + 8 * X_4 + 16 * X_5 + 32 * X_6 + 64 * X_7 + 128 * X_8 + 256 * X_9 + 512 * X_10
+        X = np.stack((X_1, X_2, X_3, X_4, X_5, X_6, X_7, X_8, X_9, X_10), axis=1)
+        dataset = np.stack((X_1, X_2, X_3, X_4, X_5, X_6, X_7, X_8, X_9, X_10, Y), axis=1)
 
     if creation == 'hiring_system':
-        dataset = np.array(pd.DataFrame([[0,0,0], [0,1,0], [1,0,1], [1,1,1]]).sample(n= kwargs['n_observations'], replace= True, weights= [0.1, 0.0, 0.4, 0.5]))
+        dataset = np.array(pd.DataFrame([[0, 0, 0], [0, 1, 0], [1, 0, 1], [1, 1, 1]]).sample(
+            n=kwargs['n_observations'], replace=True, weights=[0.1, 0.0, 0.4, 0.5]))
         X = dataset[:, 0:2]
         Y = dataset[:, 2]
 
@@ -170,7 +173,8 @@ def create_dataset(creation, save_path, **kwargs):
 # %%
 # create_dataset('decimal_system', 'datasets/decimal_system_2000.pickle', n_observations=2000)
 # create_dataset('random_test', 'datasets/random_test.pickle', n_observations = 20000)
-# create_dataset('hiring_system', 'datasets/hiring_system.pickle', n_observations=200)
+# create_dataset('hiring_system', 'datasets/hiring_system_200.pickle', n_observations=200)
+# create_dataset('binary_system', 'datasets/binary_system_200.pickle', n_observations=200)
 # %%
 
 
@@ -246,8 +250,7 @@ def parse_inputs(fi_method_name, **kwargs):
 #                         "mlp": MLPClassifier,
 
 
-
-#TODO! Kijken waar catboostclassifier en regressor + lightbm classifier en regressor nog bij kunnen als model
+# TODO! Kijken waar catboostclassifier en regressor + lightbm classifier en regressor nog bij kunnen als model
 list_of_all_methods = []
 # List of FI methods:
 # bp_feature_importance
@@ -281,10 +284,10 @@ list_of_all_methods += ['EL_absolute_weights']
 list_of_all_methods += ['Fisher_Score']
 # permutation_importance_classifier
 list_of_all_methods += ['permutation_importance_classifier_' + i for i in ['LogisticRegression', 'Ridge', 'LinearRegression',
-                                                                'Lasso', 'SGDClassifier', 'SGDRegressor', 'MLPClassifier', 'MLPRegressor', 'SymbolicRegressor']]
+                                                                           'Lasso', 'SGDClassifier', 'SGDRegressor', 'MLPClassifier', 'MLPRegressor', 'SymbolicRegressor']]
 # permutation_importance_regressor
 list_of_all_methods += ['permutation_importance_regressor_' + i for i in ['LogisticRegression', 'Ridge', 'LinearRegression',
-                                                                'Lasso', 'SGDClassifier', 'SGDRegressor', 'MLPClassifier', 'MLPRegressor', 'SymbolicRegressor']]
+                                                                          'Lasso', 'SGDClassifier', 'SGDRegressor', 'MLPClassifier', 'MLPRegressor', 'SymbolicRegressor']]
 # shap_explainer_tree_classifier (XGBClassifier, XGBRFClassifier)
 # TODO: Don't know if XGBRFClassifier works, as only zero FI are produced
 # TODO: kunnen niet ook andere methode zoals RF?
@@ -325,34 +328,34 @@ list_of_all_methods += ['shap_explainer_exact_classifier_' + i for i in ['Logist
 # shap_explainer_exact_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
 list_of_all_methods += ['shap_explainer_exact_regressor_' + i for i in ['Ridge', 'LinearRegression',
                                                                         'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
-#R_caret_classifier
+# R_caret_classifier
 list_of_all_methods += ['R_caret_classifier_' + i for i in
-['snn', 'knn', 'bayesglm', 'lssvmRadial', 'rocc', 'ownn', 'ORFpls', 'rFerns', 'treebag', 'RRF', 'svmRadial', 'ctree2', 'evtree', 'pda', 'rpart', 'cforest', 'svmLinear', 'xyf', 'C5.0Tree', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'FH.GBML', 'svmLinear2', 'bstSm', 'LogitBoost', 'wsrf', 'plr', 'xgbLinear', 'rf', 'null', 'protoclass', 'monmlp', 'Rborist', 'mlpWeightDecay', 'svmRadialWeights', 'mlpML', 'ctree', 'loclda', 'sdwd', 'mlpWeightDecayML', 'svmRadialSigma', 'bstTree', 'dnn', 'ordinalRF', 'pda2', 'BstLm', 'RRFglobal', 'mlp', 'rpart1SE', 'pcaNNet', 'ORFsvm', 'parRF', 'rpart2', 'gaussprPoly', 'C5.0Rules', 'rda', 'rbfDDA', 'multinom', 'gaussprLinear', 'svmPoly']]
-#R_caret_regressor
+                        ['snn', 'knn', 'bayesglm', 'lssvmRadial', 'rocc', 'ownn', 'ORFpls', 'rFerns', 'treebag', 'RRF', 'svmRadial', 'ctree2', 'evtree', 'pda', 'rpart', 'cforest', 'svmLinear', 'xyf', 'C5.0Tree', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'FH.GBML', 'svmLinear2', 'bstSm', 'LogitBoost', 'wsrf', 'plr', 'xgbLinear', 'rf', 'null', 'protoclass', 'monmlp', 'Rborist', 'mlpWeightDecay', 'svmRadialWeights', 'mlpML', 'ctree', 'loclda', 'sdwd', 'mlpWeightDecayML', 'svmRadialSigma', 'bstTree', 'dnn', 'ordinalRF', 'pda2', 'BstLm', 'RRFglobal', 'mlp', 'rpart1SE', 'pcaNNet', 'ORFsvm', 'parRF', 'rpart2', 'gaussprPoly', 'C5.0Rules', 'rda', 'rbfDDA', 'multinom', 'gaussprLinear', 'svmPoly']]
+# R_caret_regressor
 list_of_all_methods += ['R_caret_regressor_' + i for i in
-['widekernelpls', 'pcr', 'knn', 'bayesglm', 'GFS.FR.MOGUL', 'qrnn', 'treebag', 'rqlasso', 'nnet', 'svmRadial', 'nnls', 'ctree2', 'evtree', 'rpart', 'cforest', 'svmLinear', 'enet', 'FIR.DM', 'xyf', 'HYFIS', 'leapSeq', 'glm', 'glm.nb', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'ppr', 'DENFIS', 'svmLinear2', 'bstSm', 'lm', 'lars2', 'pls', 'rvmRadial', 'xgbLinear', 'simpls', 'rf', 'null', 'monmlp', 'Rborist', 'relaxo', 'GFS.THRIFT', 'mlpWeightDecay', 'randomGLM', 'mlpML', 'ctree', 'brnn', 'mlpWeightDecayML', 'kernelpls', 'krlsRadial', 'spikeslab', 'svmRadialSigma', 'lasso', 'glmnet', 'bstTree', 'dnn', 'icr', 'leapBackward', 'qrf', 'leapForward', 'BstLm', 'ANFIS', 'glmboost', 'mlp', 'rpart1SE', 'lmStepAIC', 'pcaNNet', 'lars', 'glmStepAIC', 'rpart2', 'gaussprPoly', 'ridge', 'FS.HGD', 'rbfDDA', 'gaussprLinear', 'svmPoly', 'penalized']]
-#rfi_classifier
+                        ['widekernelpls', 'pcr', 'knn', 'bayesglm', 'GFS.FR.MOGUL', 'qrnn', 'treebag', 'rqlasso', 'nnet', 'svmRadial', 'nnls', 'ctree2', 'evtree', 'rpart', 'cforest', 'svmLinear', 'enet', 'FIR.DM', 'xyf', 'HYFIS', 'leapSeq', 'glm', 'glm.nb', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'ppr', 'DENFIS', 'svmLinear2', 'bstSm', 'lm', 'lars2', 'pls', 'rvmRadial', 'xgbLinear', 'simpls', 'rf', 'null', 'monmlp', 'Rborist', 'relaxo', 'GFS.THRIFT', 'mlpWeightDecay', 'randomGLM', 'mlpML', 'ctree', 'brnn', 'mlpWeightDecayML', 'kernelpls', 'krlsRadial', 'spikeslab', 'svmRadialSigma', 'lasso', 'glmnet', 'bstTree', 'dnn', 'icr', 'leapBackward', 'qrf', 'leapForward', 'BstLm', 'ANFIS', 'glmboost', 'mlp', 'rpart1SE', 'lmStepAIC', 'pcaNNet', 'lars', 'glmStepAIC', 'rpart2', 'gaussprPoly', 'ridge', 'FS.HGD', 'rbfDDA', 'gaussprLinear', 'svmPoly', 'penalized']]
+# rfi_classifier
 list_of_all_methods += ['rfi_classifier_' + i for i in ['LogisticRegression',
-                                                                         'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
+                                                        'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
 # rfi_regressor
 list_of_all_methods += ['rfi_regressor_' + i for i in ['Ridge', 'LinearRegression',
-                                                                        'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
-#cfi_classifier
+                                                       'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+# cfi_classifier
 list_of_all_methods += ['cfi_classifier_' + i for i in ['LogisticRegression',
-                                                                         'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
+                                                        'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
 # cfi_regressor
 list_of_all_methods += ['cfi_regressor_' + i for i in ['Ridge', 'LinearRegression',
-                                                                        'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+                                                       'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
 # featurevec_classifier
 list_of_all_methods += ['featurevec_classifier']
- # featurevec_regressor
+# featurevec_regressor
 list_of_all_methods += ['featurevec_regressor']
-#R_firm_classifier
+# R_firm_classifier
 list_of_all_methods += ['R_firm_classifier_' + i for i in
-['knn', 'treebag', 'RRF', 'ctree2', 'evtree', 'pda', 'rpart', 'cforest', 'xyf', 'C5.0Tree', 'kknn', 'gaussprRadial', 'LogitBoost', 'wsrf', 'xgbLinear', 'rf', 'null', 'monmlp', 'Rborist', 'mlpWeightDecay', 'mlpML', 'ctree', 'mlpWeightDecayML', 'dnn', 'pda2', 'RRFglobal', 'mlp', 'rpart1SE', 'parRF', 'rpart2', 'gaussprPoly', 'C5.0Rules', 'rbfDDA', 'multinom', 'gaussprLinear']]
-#R_firm_regressor
+                        ['knn', 'treebag', 'RRF', 'ctree2', 'evtree', 'pda', 'rpart', 'cforest', 'xyf', 'C5.0Tree', 'kknn', 'gaussprRadial', 'LogitBoost', 'wsrf', 'xgbLinear', 'rf', 'null', 'monmlp', 'Rborist', 'mlpWeightDecay', 'mlpML', 'ctree', 'mlpWeightDecayML', 'dnn', 'pda2', 'RRFglobal', 'mlp', 'rpart1SE', 'parRF', 'rpart2', 'gaussprPoly', 'C5.0Rules', 'rbfDDA', 'multinom', 'gaussprLinear']]
+# R_firm_regressor
 list_of_all_methods += ['R_firm_regressor_' + i for i in
-['widekernelpls', 'pcr', 'knn', 'bayesglm', 'GFS.FR.MOGUL', 'qrnn', 'treebag', 'rqlasso', 'nnet', 'svmRadial', 'nnls', 'ctree2', 'evtree', 'rpart', 'cforest', 'svmLinear', 'enet', 'FIR.DM', 'xyf', 'HYFIS', 'leapSeq', 'glm', 'glm.nb', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'ppr', 'DENFIS', 'svmLinear2', 'bstSm', 'lm', 'lars2', 'pls', 'rvmRadial', 'xgbLinear', 'simpls', 'rf', 'null', 'monmlp', 'Rborist', 'relaxo', 'GFS.THRIFT', 'mlpWeightDecay', 'randomGLM', 'mlpML', 'ctree', 'brnn', 'mlpWeightDecayML', 'kernelpls', 'krlsRadial', 'spikeslab', 'svmRadialSigma', 'lasso', 'glmnet', 'bstTree', 'dnn', 'icr', 'leapBackward', 'qrf', 'leapForward', 'BstLm', 'ANFIS', 'glmboost', 'mlp', 'rpart1SE', 'lmStepAIC', 'pcaNNet', 'lars', 'glmStepAIC', 'rpart2', 'gaussprPoly', 'ridge', 'FS.HGD', 'rbfDDA', 'gaussprLinear', 'svmPoly', 'penalized']]
+                        ['widekernelpls', 'pcr', 'knn', 'bayesglm', 'GFS.FR.MOGUL', 'qrnn', 'treebag', 'rqlasso', 'nnet', 'svmRadial', 'nnls', 'ctree2', 'evtree', 'rpart', 'cforest', 'svmLinear', 'enet', 'FIR.DM', 'xyf', 'HYFIS', 'leapSeq', 'glm', 'glm.nb', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'ppr', 'DENFIS', 'svmLinear2', 'bstSm', 'lm', 'lars2', 'pls', 'rvmRadial', 'xgbLinear', 'simpls', 'rf', 'null', 'monmlp', 'Rborist', 'relaxo', 'GFS.THRIFT', 'mlpWeightDecay', 'randomGLM', 'mlpML', 'ctree', 'brnn', 'mlpWeightDecayML', 'kernelpls', 'krlsRadial', 'spikeslab', 'svmRadialSigma', 'lasso', 'glmnet', 'bstTree', 'dnn', 'icr', 'leapBackward', 'qrf', 'leapForward', 'BstLm', 'ANFIS', 'glmboost', 'mlp', 'rpart1SE', 'lmStepAIC', 'pcaNNet', 'lars', 'glmStepAIC', 'rpart2', 'gaussprPoly', 'ridge', 'FS.HGD', 'rbfDDA', 'gaussprLinear', 'svmPoly', 'penalized']]
 # PCA
 list_of_all_methods += ['PCA_sum']
 # PCA_weighted
@@ -379,11 +382,13 @@ list_of_all_methods += ['R_vip_weighted_Y_classifier_' + i for i in ['plsda', 's
 list_of_all_methods += ['R_vip_weighted_Y_regressor_' + i for i in ['pls', 'spls']]
 # treeinterpreter_classifier
 list_of_all_methods += ['treeinterpreter_classifier_' + i for i in ['DecisionTreeClassifier',
-'ExtraTreeClassifier', 'RandomForestClassifier', 'ExtraTreesClassifier', 'ExtraTreeClassifier']]
+                                                                    'ExtraTreeClassifier', 'RandomForestClassifier', 'ExtraTreesClassifier', 'ExtraTreeClassifier']]
 # treeinterpreter_regressor
-list_of_all_methods += ['treeinterpreter_regressor_' + i for i in ['DecisionTreeRegressor', 'ExtraTreeRegressor', 'RandomForestRegressor', 'ExtraTreesRegressor', 'ExtraTreeRegressor']]
+list_of_all_methods += ['treeinterpreter_regressor_' + i for i in ['DecisionTreeRegressor',
+                                                                   'ExtraTreeRegressor', 'RandomForestRegressor', 'ExtraTreesRegressor', 'ExtraTreeRegressor']]
 # scipy_stats
-list_of_all_methods += ['scipy_stats_' + i for i in ['f_oneway', 'alexandergovern', 'pearsonr', 'spearmanr', 'pointbiserialr', 'kendalltau', 'weightedtau', 'somersd', 'linregress', 'siegelslopes', 'theilslopes', 'multiscale_graphcorr']]
+list_of_all_methods += ['scipy_stats_' + i for i in ['f_oneway', 'alexandergovern', 'pearsonr', 'spearmanr', 'pointbiserialr',
+                                                     'kendalltau', 'weightedtau', 'somersd', 'linregress', 'siegelslopes', 'theilslopes', 'multiscale_graphcorr']]
 # booster_classifier (XGBClassifier)
 list_of_all_methods += ['booster_classifier_' + j + '_' + i for j in ['weight', 'gain', 'cover'] for i in ['XGBClassifier']]
 # booster_regressor (XGBRegressor, XGBRFRegressor)
@@ -394,22 +399,28 @@ list_of_all_methods += ['sklearn_feature_selection_classifier_' + i for i in ['c
 # sklearn_feature_selection_regressor
 list_of_all_methods += ['sklearn_feature_selection_regressor_' + i for i in ['chi2', 'f_regression', 'r_regression', 'mutual_info_regression']]
 # R_FSinR_classifier
-list_of_all_methods += ['R_FSinR_classifier_' + i for i in ['binaryConsistency', 'chiSquared', 'cramer', 'gainRatio', 'giniIndex', 'IEConsistency', 'IEPConsistency', 'mutualInformation',  'roughsetConsistency', 'ReliefFeatureSetMeasure', 'symmetricalUncertain']]
+list_of_all_methods += ['R_FSinR_classifier_' + i for i in ['binaryConsistency', 'chiSquared', 'cramer', 'gainRatio', 'giniIndex',
+                                                            'IEConsistency', 'IEPConsistency', 'mutualInformation',  'roughsetConsistency', 'ReliefFeatureSetMeasure', 'symmetricalUncertain']]
 # R_FSinR_regressor
-list_of_all_methods += ['R_FSinR_regressor_' + i for i in ['binaryConsistency', 'chiSquared', 'cramer', 'gainRatio', 'giniIndex', 'IEConsistency', 'IEPConsistency', 'mutualInformation',  'roughsetConsistency', 'ReliefFeatureSetMeasure', 'symmetricalUncertain']]
+list_of_all_methods += ['R_FSinR_regressor_' + i for i in ['binaryConsistency', 'chiSquared', 'cramer', 'gainRatio', 'giniIndex',
+                                                           'IEConsistency', 'IEPConsistency', 'mutualInformation',  'roughsetConsistency', 'ReliefFeatureSetMeasure', 'symmetricalUncertain']]
 # sage_classifier
-list_of_all_methods += ['sage_classifier_' + j + '_' + i for j in ['IteratedEstimator', 'PermutationEstimator', 'KernelEstimator', 'SignEstimator'] for i in ['LogisticRegression', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier', 'CatBoostClassifier', 'LGBMClassifier']]
+list_of_all_methods += ['sage_classifier_' + j + '_' + i for j in ['IteratedEstimator', 'PermutationEstimator', 'KernelEstimator', 'SignEstimator']
+                        for i in ['LogisticRegression', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier', 'CatBoostClassifier', 'LGBMClassifier']]
 # runs too slow
 list_of_all_methods.remove('sage_classifier_PermutationEstimator_LogisticRegression')
 # sage_regressor
-list_of_all_methods += ['sage_regressor_' + j + '_' + i for j in ['IteratedEstimator', 'PermutationEstimator', 'KernelEstimator', 'SignEstimator'] for i in ['Ridge', 'LinearRegression','Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor', 'CatBoostRegressor', 'LGBMRegressor']]
-#TODO! UItzoeken welke modellen hier allemaal bij kunnen. Het moet in ieder geval een predict functie hebben
+list_of_all_methods += ['sage_regressor_' + j + '_' + i for j in ['IteratedEstimator', 'PermutationEstimator', 'KernelEstimator', 'SignEstimator'] for i in [
+    'Ridge', 'LinearRegression', 'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor', 'CatBoostRegressor', 'LGBMRegressor']]
+# TODO! UItzoeken welke modellen hier allemaal bij kunnen. Het moet in ieder geval een predict functie hebben
 # QII_averaged_classifier
-list_of_all_methods += ['QII_averaged_classifier_' + j + '_' + i for j in ['shapley', 'banzhaf'] for i in ['LogisticRegression', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier', 'CatBoostClassifier', 'LGBMClassifier']]
+list_of_all_methods += ['QII_averaged_classifier_' + j + '_' + i for j in ['shapley', 'banzhaf']
+                        for i in ['LogisticRegression', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier', 'CatBoostClassifier', 'LGBMClassifier']]
 # QII_averaged_regressor
-list_of_all_methods += ['QII_averaged_regressor_' + j + '_' + i for j in ['shapley', 'banzhaf'] for i in ['Ridge', 'LinearRegression','Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor', 'CatBoostRegressor', 'LGBMRegressor']]
+list_of_all_methods += ['QII_averaged_regressor_' + j + '_' + i for j in ['shapley', 'banzhaf'] for i in ['Ridge', 'LinearRegression',
+                                                                                                          'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor', 'CatBoostRegressor', 'LGBMRegressor']]
 # sunnies
-list_of_all_methods += ['sunnies_' + i for i in ['R2','DC','BCDC','AIDC','HSIC']]
+list_of_all_methods += ['sunnies_' + i for i in ['R2', 'DC', 'BCDC', 'AIDC', 'HSIC']]
 # rebelosa_classifier
 list_of_all_methods += ['rebelosa_classifier_' + i for i in ['RF', 'Garson_NN1', 'Garson_NN2', 'VIANN_NN1', 'VIANN_NN2', 'LOFO_NN1', 'LOFO_NN2']]
 # rebelosa_regressor
@@ -422,22 +433,24 @@ list_of_all_methods += ['relief_regressor_' + i for i in ['Relief', 'ReliefF', '
 list_of_all_methods += ['DIFFI']
 # ITMO
 list_of_all_methods += ['ITMO_' + i for i in ["fit_criterion_measure", "f_ratio_measure", "gini_index", "su_measure", "spearman_corr", "pearson_corr", "fechner_corr", "kendall_corr", "chi2_measure", "anova", "laplacian_score",
-"information_gain", "modified_t_score"] + ["MIM", "MRMR", "JMI", "CIFE", "CMIM", "ICAP", "DCSF", "CFR", "MRI", "IWFS"] + ['NDFS', 'RFS', 'SPEC', 'MCFS', 'UDFS']]
+                                              "information_gain", "modified_t_score"] + ["MIM", "MRMR", "JMI", "CIFE", "CMIM", "ICAP", "DCSF", "CFR", "MRI", "IWFS"] + ['NDFS', 'RFS', 'SPEC', 'MCFS', 'UDFS']]
 
 # %%
 
 # removed due to time constraints:
 for i in ['sage_classifier_PermutationEstimator_MLPClassifier',
- 'sage_classifier_PermutationEstimator_XGBClassifier',
- 'sage_classifier_PermutationEstimator_LGBMClassifier',
- 'sage_classifier_KernelEstimator_XGBRFClassifier',
- 'sage_classifier_KernelEstimator_CatBoostClassifier',
- 'sage_classifier_KernelEstimator_LGBMClassifier']:
+          'sage_classifier_PermutationEstimator_XGBClassifier',
+          'sage_classifier_PermutationEstimator_LGBMClassifier',
+          'sage_classifier_KernelEstimator_XGBRFClassifier',
+          'sage_classifier_KernelEstimator_CatBoostClassifier',
+          'sage_classifier_KernelEstimator_LGBMClassifier']:
     list_of_all_methods.remove(i)
 
 # %%
 
 # %%
+
+
 def initialize_experiment_variables(name, X, Y, labelencoded_Y):
     kwargs = {}
 
@@ -585,7 +598,6 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
         fi_method_name = 'Fisher_Score'
         # default values:
 
-
     if 'featurevec_classifier' in name:
         fi_method_name = 'featurevec_classifier'
 
@@ -610,10 +622,8 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
     if 'R_pimp_regressor' == name:
         fi_method_name = 'R_pimp_regressor'
 
-
     if 'DIFFI' == name:
         fi_method_name = 'DIFFI'
-
 
     ###########################################################
     # We use different parameters for the following methods#
@@ -697,7 +707,6 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
         if 'linear' in name:
             kwargs['kernel'] = 'linear'
 
-
     if 'permutation_importance_classifier' in name:
         fi_method_name = 'permutation_importance_classifier'
 
@@ -732,7 +741,6 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
 
         # custom values:
         kwargs['model'] = eval(name.split(fi_method_name + '_', 1)[1])()
-
 
     if 'shap_explainer_tree_regressor' in name:
         fi_method_name = 'shap_explainer_tree_regressor'
@@ -835,7 +843,7 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
 
     if 'rfi_classifier' in name:
         fi_method_name = 'rfi_classifier'
-        kwargs['loss'] = lambda x, y : np.power(x-y, 2)
+        kwargs['loss'] = lambda x, y: np.power(x-y, 2)
         kwargs['G'] = np.array([])
         kwargs['D'] = np.arange(0, X.shape[1])
         kwargs['n_repeats'] = 30
@@ -844,7 +852,7 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
 
     if 'rfi_regressor' in name:
         fi_method_name = 'rfi_regressor'
-        kwargs['loss'] = lambda x, y : np.power(x-y, 2)
+        kwargs['loss'] = lambda x, y: np.power(x-y, 2)
         kwargs['G'] = np.array([])
         kwargs['D'] = np.arange(0, X.shape[1])
         kwargs['n_repeats'] = 30
@@ -853,22 +861,19 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
 
     if 'cfi_classifier' in name:
         fi_method_name = 'cfi_classifier'
-        kwargs['loss'] = lambda x, y : np.power(x-y, 2)
+        kwargs['loss'] = lambda x, y: np.power(x-y, 2)
         kwargs['D'] = np.arange(0, X.shape[1])
         kwargs['n_repeats'] = 30
 
         kwargs['model'] = eval(name.split(fi_method_name + '_', 1)[1])()
-
 
     if 'cfi_regressor' in name:
         fi_method_name = 'cfi_regressor'
-        kwargs['loss'] = lambda x, y : np.power(x-y, 2)
+        kwargs['loss'] = lambda x, y: np.power(x-y, 2)
         kwargs['D'] = np.arange(0, X.shape[1])
         kwargs['n_repeats'] = 30
 
         kwargs['model'] = eval(name.split(fi_method_name + '_', 1)[1])()
-
-
 
     if 'R_firm_classifier' in name:
         fi_method_name = 'R_firm_classifier'
@@ -929,7 +934,6 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
         if 'multiscale_graphcorr' in name:
             kwargs['eval_string'] = name_function + '(X[:, i], Y).stat'
 
-
     if 'booster_classifier' in name:
         fi_method_name = 'booster_classifier'
         # default values:
@@ -946,18 +950,15 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
         kwargs['model'] = eval(name.split('_', 3)[3])()
         kwargs['importance_type'] = name.split('_', 3)[2]
 
-
     if 'sklearn_feature_selection_classifier' in name:
         fi_method_name = 'sklearn_feature_selection_classifier'
 
         kwargs['method'] = eval(name.split(fi_method_name + '_', 1)[1])
 
-
     if 'sklearn_feature_selection_regressor' in name:
         fi_method_name = 'sklearn_feature_selection_regressor'
 
         kwargs['method'] = eval(name.split(fi_method_name + '_', 1)[1])
-
 
     if 'R_FSinR_classifier' in name:
         fi_method_name = 'R_FSinR_classifier'
@@ -967,8 +968,6 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
     if 'R_FSinR_regressor' in name:
         fi_method_name = 'R_FSinR_regressor'
         kwargs['method_name'] = name.split(fi_method_name + '_', 1)[1]
-
-
 
     if 'sage_classifier' in name:
         fi_method_name = 'sage_classifier'
@@ -980,11 +979,10 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
         kwargs['model'] = eval(name.split('_', 3)[3])()
         kwargs['estimator'] = eval(name.split('_', 3)[2])
 
-
     if 'bp_feature_importance' in name:
         fi_method_name = 'bp_feature_importance'
 
-        #TODO hier moet ik nog iets mee
+        # TODO hier moet ik nog iets mee
         kwargs['stopping_strategy'] = 20000
         kwargs['sequence_strategy'] = 'exhaustive'
         kwargs['epsilon'] = 0.0
@@ -993,9 +991,6 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
         kwargs['binning_strategy'] = 'auto'
         kwargs['midway_binning'] = False
         kwargs['compute_parallel_ud'] = False
-
-
-
 
     if 'QII_averaged_classifier' in name:
         fi_method_name = 'QII_averaged_classifier'
@@ -1007,21 +1002,15 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
         kwargs['model'] = eval(name.split('_', 4)[4])()
         kwargs['method'] = name.split('_', 4)[3]
 
-
-
-
     if 'sunnies' in name:
         fi_method_name = 'sunnies'
         kwargs['utility'] = name.split(fi_method_name + '_', 1)[1]
-
-
 
     if 'rebelosa_classifier' in name:
         fi_method_name = 'rebelosa_classifier'
         kwargs['method_name'] = name.split('_', 3)[2]
         if len(name.split('_', 3)) == 4:
             kwargs['model_name'] = name.split('_', 3)[3]
-
 
     if 'rebelosa_regressor' in name:
         fi_method_name = 'rebelosa_regressor'
@@ -1037,7 +1026,6 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
         fi_method_name = 'relief_regressor'
         kwargs['method'] = eval(name.split('_', 3)[2])
 
-
     if 'ITMO' in name:
         fi_method_name = 'ITMO'
         method_name = name.split('_', 1)[1]
@@ -1050,7 +1038,6 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
 
         if method_name in ['NDFS', 'RFS', 'SPEC', 'MCFS', 'UDFS']:
             kwargs['eval_string'] = 'ITMO.' + method_name + '(X.shape[1]).fit(X,Y).feature_scores_'
-
 
     return kwargs, fi_method_name
 
@@ -1173,12 +1160,12 @@ def determine_fi(fi_method_name, data_path, **kwargs):
     if fi_method_name == 'permutation_importance_classifier':
         reduced_kwargs = kwargs_reduced_to_func_arg(func=permutation_importance, kwargs=kwargs)
         fitted_model = kwargs['model'].fit(X, labelencoded_Y)
-        fi_results = permutation_importance(estimator= fitted_model, X=X, y= labelencoded_Y, **reduced_kwargs).importances_mean
+        fi_results = permutation_importance(estimator=fitted_model, X=X, y=labelencoded_Y, **reduced_kwargs).importances_mean
 
     if fi_method_name == 'permutation_importance_regressor':
         reduced_kwargs = kwargs_reduced_to_func_arg(func=permutation_importance, kwargs=kwargs)
         fitted_model = kwargs['model'].fit(X, Y)
-        fi_results = permutation_importance(estimator= fitted_model, X=X, y= Y, **reduced_kwargs).importances_mean
+        fi_results = permutation_importance(estimator=fitted_model, X=X, y=Y, **reduced_kwargs).importances_mean
 
     if fi_method_name == 'shap_explainer_tree_classifier':
         model = kwargs['model'].fit(X, labelencoded_Y)
@@ -1266,7 +1253,7 @@ def determine_fi(fi_method_name, data_path, **kwargs):
         shap_values = explainer(X)
         fi_results = shap_values.abs.values.mean(0)
 
-    #TODO: Works only with 1D Y as it unlists
+    # TODO: Works only with 1D Y as it unlists
     if fi_method_name == 'R_caret_classifier':
         robjects.globalenv["X"] = X
         robjects.globalenv["Y"] = Y
@@ -1289,7 +1276,7 @@ def determine_fi(fi_method_name, data_path, **kwargs):
         ''')
         fi_results = np.array(fi_results)
 
-    #TODO: Works only with 1D Y as it unlists
+    # TODO: Works only with 1D Y as it unlists
     if fi_method_name == 'R_caret_regressor':
         robjects.globalenv["X"] = X
         robjects.globalenv["Y"] = Y
@@ -1308,34 +1295,33 @@ def determine_fi(fi_method_name, data_path, **kwargs):
         ''')
         fi_results = np.array(fi_results)
 
-
     if fi_method_name == 'rfi_classifier':
         model = kwargs['model'].fit(X, labelencoded_Y)
-        fi_results = rfi(predict= model.predict, X_train= X, X_test= X, y_test= labelencoded_Y, **kwargs_reduced_to_func_arg(func=rfi, kwargs=kwargs))[0]
+        fi_results = rfi(predict=model.predict, X_train=X, X_test=X, y_test=labelencoded_Y, **kwargs_reduced_to_func_arg(func=rfi, kwargs=kwargs))[0]
 
     if fi_method_name == 'rfi_regressor':
         model = kwargs['model'].fit(X, Y)
-        fi_results = rfi(predict= model.predict, X_train= X, X_test= X, y_test= Y, **kwargs_reduced_to_func_arg(func=rfi, kwargs=kwargs))[0]
+        fi_results = rfi(predict=model.predict, X_train=X, X_test=X, y_test=Y, **kwargs_reduced_to_func_arg(func=rfi, kwargs=kwargs))[0]
 
     if fi_method_name == 'cfi_classifier':
         model = kwargs['model'].fit(X, labelencoded_Y)
-        fi_results = cfi(predict= model.predict, X_train= X, X_test= X, y_test= labelencoded_Y, **kwargs_reduced_to_func_arg(func=cfi, kwargs=kwargs))[0]
+        fi_results = cfi(predict=model.predict, X_train=X, X_test=X, y_test=labelencoded_Y, **kwargs_reduced_to_func_arg(func=cfi, kwargs=kwargs))[0]
 
     if fi_method_name == 'cfi_regressor':
         model = kwargs['model'].fit(X, Y)
-        fi_results = cfi(predict= model.predict, X_train= X, X_test= X, y_test= Y, **kwargs_reduced_to_func_arg(func=cfi, kwargs=kwargs))[0]
+        fi_results = cfi(predict=model.predict, X_train=X, X_test=X, y_test=Y, **kwargs_reduced_to_func_arg(func=cfi, kwargs=kwargs))[0]
 
     if fi_method_name == 'featurevec_classifier':
-        fv = FeatureVec(mode='classify', feature_names= range(0, X.shape[1]))
+        fv = FeatureVec(mode='classify', feature_names=range(0, X.shape[1]))
         fv.fit(X, labelencoded_Y)
         fi_results = fv.importance
 
     if fi_method_name == 'featurevec_regressor':
-        fv = FeatureVec(mode='regress', feature_names= range(0, X.shape[1]))
+        fv = FeatureVec(mode='regress', feature_names=range(0, X.shape[1]))
         fv.fit(X, Y)
         fi_results = fv.importance
 
-    #TODO: Works only with 1D Y as it unlists
+    # TODO: Works only with 1D Y as it unlists
     if fi_method_name == 'R_firm_classifier':
         robjects.globalenv["X"] = X
         robjects.globalenv["Y"] = Y
@@ -1356,7 +1342,7 @@ def determine_fi(fi_method_name, data_path, **kwargs):
         ''')
         fi_results = np.array(fi_results)
 
-    #TODO: Works only with 1D Y as it unlists
+    # TODO: Works only with 1D Y as it unlists
     if fi_method_name == 'R_firm_regressor':
         robjects.globalenv["X"] = X
         robjects.globalenv["Y"] = Y
@@ -1375,21 +1361,17 @@ def determine_fi(fi_method_name, data_path, **kwargs):
         ''')
         fi_results = np.array(fi_results)
 
-
-
     # PCA
     if fi_method_name == 'PCA_sum':
         pca = PCA()
         X_new = pca.fit_transform(X)
-        fi_results = np.sum(abs(pca.components_), axis = 0)
+        fi_results = np.sum(abs(pca.components_), axis=0)
 
     # PCA_weighted same as PCA, but weighted by explained variance of component
     if fi_method_name == 'PCA_weighted':
         pca = PCA()
         X_new = pca.fit_transform(X)
-        fi_results = np.sum(abs(pca.components_) * pca.explained_variance_ratio_, axis = 0)
-
-
+        fi_results = np.sum(abs(pca.components_) * pca.explained_variance_ratio_, axis=0)
 
     if fi_method_name == 'R_varimp_classifier':
         robjects.globalenv["X"] = X
@@ -1442,7 +1424,6 @@ def determine_fi(fi_method_name, data_path, **kwargs):
         model_rf = randomForest(X,Y,importance=TRUE)
         as.vector(PIMP(X,Y,model_rf)$VarImp)
         ''')
-
 
     if fi_method_name == 'R_vip_sum_classifier':
         robjects.globalenv["X"] = X
@@ -1507,19 +1488,17 @@ def determine_fi(fi_method_name, data_path, **kwargs):
             drop(t(linn.vip %*% model$prop_expl_var$Y))
             ''')
 
-
     if fi_method_name == 'treeinterpreter_classifier':
         model = kwargs['model'].fit(X, labelencoded_Y)
         explainer = shap.explainers.Tree(model, X)
         contributions = treeinterpreter.predict(model, X)[2]
-        average_abs_v = np.mean(np.abs(contributions), axis = 0)
+        average_abs_v = np.mean(np.abs(contributions), axis=0)
         fi_results = convert_average_by_class(labelencoded_Y, X, model, average_abs_v)
 
     if fi_method_name == 'treeinterpreter_regressor':
         model = kwargs['model'].fit(X, Y)
         contributions = treeinterpreter.predict(model, X)[2]
-        fi_results = np.mean(np.abs(contributions), axis = 0)
-
+        fi_results = np.mean(np.abs(contributions), axis=0)
 
     if fi_method_name == 'scipy_stats':
         fi_results = [None] * X.shape[1]
@@ -1527,15 +1506,13 @@ def determine_fi(fi_method_name, data_path, **kwargs):
             fi_results[i] = eval(kwargs['eval_string'])
         fi_results = np.array(fi_results)
 
-
-
     if fi_method_name == 'booster_classifier':
         model = kwargs['model'].fit(X, labelencoded_Y)
-        fi_results = [i for i in model.get_booster().get_score(importance_type= kwargs['importance_type']).values()]
+        fi_results = [i for i in model.get_booster().get_score(importance_type=kwargs['importance_type']).values()]
 
     if fi_method_name == 'booster_regressor':
         model = kwargs['model'].fit(X, Y)
-        fi_results = [i for i in model.get_booster().get_score(importance_type= kwargs['importance_type']).values()]
+        fi_results = [i for i in model.get_booster().get_score(importance_type=kwargs['importance_type']).values()]
 
     if fi_method_name == 'sklearn_feature_selection_classifier':
         results = kwargs['method'](X, labelencoded_Y)
@@ -1590,21 +1567,19 @@ def determine_fi(fi_method_name, data_path, **kwargs):
         results
         ''')
 
-
     if fi_method_name == 'sage_classifier':
         model = kwargs['model'].fit(X, labelencoded_Y)
         # for imputing data which is not necessary but required for estimator
         imputer = MarginalImputer(model, X)
-        estimator = kwargs['estimator'](imputer, loss = 'cross entropy')
-        fi_results = estimator(X,labelencoded_Y, bar = False).values
+        estimator = kwargs['estimator'](imputer, loss='cross entropy')
+        fi_results = estimator(X, labelencoded_Y, bar=False).values
 
     if fi_method_name == 'sage_regressor':
         model = kwargs['model'].fit(X, Y)
         # for imputing data which is not necessary but required for estimator
         imputer = MarginalImputer(model, X)
-        estimator = kwargs['estimator'](imputer, loss = 'mse')
-        fi_results = estimator(X,Y, bar = False).values
-
+        estimator = kwargs['estimator'](imputer, loss='mse')
+        fi_results = estimator(X, Y, bar=False).values
 
     if fi_method_name == 'bp_feature_importance':
         try:
@@ -1620,9 +1595,6 @@ def determine_fi(fi_method_name, data_path, **kwargs):
         results = bp_feature_importance(dataset, X_indices, Y_indices, **kwargs_reduced_to_func_arg(func=bp_feature_importance, kwargs=kwargs))
         fi_results = np.array([results[frozenset({i})] for i in range(X.shape[1])])
 
-
-
-
     if fi_method_name == 'QII_averaged_classifier':
         predictor = kwargs['model'].fit(X, labelencoded_Y)
         qii = QII(X, X.shape[1], QuantityOfInterest())
@@ -1630,8 +1602,9 @@ def determine_fi(fi_method_name, data_path, **kwargs):
         result = np.zeros(shape=X.shape)
         for x_0_idx in range(X.shape[0]):
             x_0 = X[x_0_idx:(x_0_idx + 1), :]
-            result[x_0_idx, :] =  list(qii.compute(x_0=x_0, predictor=predictor, show_approx=False, evaluated_features=None,data_exhaustive=True, feature_exhaustive=True, method=kwargs['method']).values())
-        fi_results = np.mean(result, axis = 0)
+            result[x_0_idx, :] = list(qii.compute(x_0=x_0, predictor=predictor, show_approx=False, evaluated_features=None,
+                                      data_exhaustive=True, feature_exhaustive=True, method=kwargs['method']).values())
+        fi_results = np.mean(result, axis=0)
 
     if fi_method_name == 'QII_averaged_regressor':
         predictor = kwargs['model'].fit(X, Y)
@@ -1640,9 +1613,9 @@ def determine_fi(fi_method_name, data_path, **kwargs):
         result = np.zeros(shape=X.shape)
         for x_0_idx in range(X.shape[0]):
             x_0 = X[x_0_idx:(x_0_idx + 1), :]
-            result[x_0_idx, :] =  list(qii.compute(x_0=x_0, predictor=predictor, show_approx=False, evaluated_features=None,data_exhaustive=True, feature_exhaustive=True, method=kwargs['method']).values())
-        fi_results = np.mean(result, axis = 0)
-
+            result[x_0_idx, :] = list(qii.compute(x_0=x_0, predictor=predictor, show_approx=False, evaluated_features=None,
+                                      data_exhaustive=True, feature_exhaustive=True, method=kwargs['method']).values())
+        fi_results = np.mean(result, axis=0)
 
     if fi_method_name == 'sunnies':
         robjects.globalenv["X"] = X
@@ -1654,22 +1627,20 @@ def determine_fi(fi_method_name, data_path, **kwargs):
             shapley(y= Y, X= X, utility= eval(parse(text= utility)))
         ''')
 
-
     if fi_method_name == 'rebelosa_classifier':
-        fi_results = np.array(modified_runExp(method = kwargs['method_name'], X= X, Y= Y, isClassification= True, mdl= kwargs.get('model_name', 'NN1')))
+        fi_results = np.array(modified_runExp(method=kwargs['method_name'], X=X, Y=Y, isClassification=True, mdl=kwargs.get('model_name', 'NN1')))
 
     if fi_method_name == 'rebelosa_regressor':
-        fi_results = np.array(modified_runExp(method = kwargs['method_name'], X= X, Y= Y, isClassification= False, mdl= kwargs.get('model_name', 'NN1')))
-
+        fi_results = np.array(modified_runExp(method=kwargs['method_name'], X=X, Y=Y, isClassification=False, mdl=kwargs.get('model_name', 'NN1')))
 
     if fi_method_name == 'relief_classifier':
-        r = kwargs['method'](n_features = X.shape[1], n_jobs = 1, categorical = range(X.shape[1])) # n_jobs is > 1 does not work
-        r.fit(X,labelencoded_Y)
+        r = kwargs['method'](n_features=X.shape[1], n_jobs=1, categorical=range(X.shape[1]))  # n_jobs is > 1 does not work
+        r.fit(X, labelencoded_Y)
         fi_results = r.w_
 
     if fi_method_name == 'relief_regressor':
-        r = kwargs['method'](n_features = X.shape[1], n_jobs = 1) # n_jobs is > 1 does not work
-        r.fit(X,Y)
+        r = kwargs['method'](n_features=X.shape[1], n_jobs=1)  # n_jobs is > 1 does not work
+        r.fit(X, Y)
         fi_results = r.w_
 
     if fi_method_name == 'DIFFI':
@@ -1685,7 +1656,6 @@ def determine_fi(fi_method_name, data_path, **kwargs):
 
 # %%
 # X, Y, labelencoded_Y, onehotencoded_Y, dataset = load_dataset(data_path='datasets/decimal_system.pickle')
-
 
 
 # model = LinearRegression()
@@ -1707,7 +1677,6 @@ def determine_fi(fi_method_name, data_path, **kwargs):
 # len(determine_fi(fi_method_name, data_path = 'E:/OneDrive/PhD/GitHub/Official_Feature_Importance/src/bp_feature_importance/datasets/decimal_system.pickle', **kwargs)) == 3
 
 
-
 # np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 # for fi_method_name in method_list:
 #     result = determine_fi(fi_method_name= fi_method_name, data_path= 'datasets/decimal_system.pickle')
@@ -1725,19 +1694,22 @@ def determine_fi(fi_method_name, data_path, **kwargs):
 #     print("{} gives fi: {}".format(name, result))
 #     result_dict[name] = result
 # %%
-
 # %%
-
+data_name = 'binary_system_200'
 np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 result_dict = {}
 time_dict = {}
-X, Y, labelencoded_Y, onehotencoded_Y, dataset = load_dataset(data_path='datasets/decimal_system_2000.pickle')
+X, Y, labelencoded_Y, onehotencoded_Y, dataset = load_dataset(data_path=f'datasets/{data_name}.pickle')
 # %%
 did_not_work = []
 not_finished_in_time = []
 
+# with open('results/decimal_system_2000.pickle', 'rb') as f:
+#     loaded = pickle.load(f)
+
+# test_methods = loaded[-1][10:20]
 test_methods = list_of_all_methods
-# test_methods = [i for i in list_of_all_methods if 'rebelosa' in i]
+# test_methods = [i for i in list_of_all_methods if 'R_caret' in i][80:]
 
 # test_methods = ['bp_feature_importance',
 #     'sage_classifier_PermutationEstimator_MLPClassifier',
@@ -1746,7 +1718,6 @@ test_methods = list_of_all_methods
 #  'sage_classifier_KernelEstimator_XGBRFClassifier',
 #  'sage_classifier_KernelEstimator_LGBMClassifier']
 # test_methods = list_of_all_methods[-50:]
-
 
 
 # for name in test_methods:
@@ -1767,17 +1738,24 @@ test_methods = list_of_all_methods
 # %%
 time_limit = 60*60
 
+os.makedirs(f'results/{data_name}', exist_ok=True)
+
+counter_save = -1
 for name in tqdm(test_methods):
+    counter_save += 1
+    with open(f'results/{data_name}/results_after_{counter_save}.pickle', 'wb') as f:
+        pickle.dump([result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
+
     with suppress_stdout():
         kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
 
         print('\033[94m')
         try:
             start_time = time.time()
-            
-            
-            result = func_timeout.func_timeout(timeout = time_limit, func= determine_fi, kwargs=  kwargs| {'fi_method_name': fi_method_name, 'data_path':'datasets/decimal_system_2000.pickle'})
-            
+
+            result = func_timeout.func_timeout(timeout=time_limit, func=determine_fi, kwargs=kwargs | {
+                                               'fi_method_name': fi_method_name, 'data_path': f'datasets/{data_name}.pickle'})
+
             end_time = time.time()
             print("{} gives fi: {}".format(name, result))
             result_dict[name] = result
@@ -1796,23 +1774,32 @@ for name in tqdm(test_methods):
             print('\033[91m', name)
             time.sleep(0.1)
 
+
+with open(f'results/{data_name}-{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.pickle', 'wb') as f:
+    pickle.dump([X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
+try:
+    shutil.rmtree(f'results/{data_name}')
+except:
+    None
+
+
 # %%
-name = 'rebelosa_classifier_LOFO_NN2'
-kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
-result = determine_fi(fi_method_name=fi_method_name, data_path='datasets/decimal_system_2000.pickle', **kwargs)
-print(len(result))
+# name = test_methods[80]
+# kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
+# result = determine_fi(fi_method_name=fi_method_name, data_path='datasets/decimal_system_200.pickle', **kwargs)
+# print(len(result))
 # %%
 
 
 # %%
-import numpy as np
-kwargs = {'n_observations': 200}
-X_1 = np.random.randint(10, size=kwargs['n_observations'])
-X_2 = np.random.randint(10, size=kwargs['n_observations'])
-X_3 = np.random.randint(10, size=kwargs['n_observations'])
-Y = X_1 + 10 * X_2 + 100 * X_3
-X = np.stack((X_1, X_2, X_3), axis=1)
-dataset = np.stack((X_1, X_2, X_3, Y), axis=1)
+# import numpy as np
+# kwargs = {'n_observations': 200}
+# X_1 = np.random.randint(10, size=kwargs['n_observations'])
+# X_2 = np.random.randint(10, size=kwargs['n_observations'])
+# X_3 = np.random.randint(10, size=kwargs['n_observations'])
+# Y = X_1 + 10 * X_2 + 100 * X_3
+# X = np.stack((X_1, X_2, X_3), axis=1)
+# dataset = np.stack((X_1, X_2, X_3, Y), axis=1)
 # %%
 
 
@@ -1832,15 +1819,15 @@ dataset = np.stack((X_1, X_2, X_3, Y), axis=1)
 # # %%
 
 # # %%
-for name, result in result_dict.items():
-    result = np.array(result)
-    if result.shape != (3,):
-        print(name)
+# for name, result in result_dict.items():
+#     result = np.array(result)
+#     if result.shape != (3,):
+#         print(name)
 # %%
 # with open('results/decimal_system_2000.pickle', 'wb') as f:
 #     pickle.dump([X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
 # %%
-# with open('results/decimal_system_2000.pickle', 'rb') as f:
+# with open('results/decimal_system_200.pickle', 'rb') as f:
 #     [X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods] = pickle.load(f)
 # %%
 # not_finished_in_time
@@ -1850,20 +1837,20 @@ for name, result in result_dict.items():
 #     if name not in not_finished_in_time:
 #         sum+=time
 # # %%
-a = pd.DataFrame(time_dict, index = [0])
-b = a.transpose()
-c = b[b[0].apply(lambda x: isinstance(x, float))]
-d = c.sort_values(by= 0, ascending = False)
-d
-# %%
-d[:].sum()
-# %%
-d[100:].index.values
-# %%
-sum = 0
-for i in b[0]:
-    if isinstance(i, float):
-        sum += i
+# a = pd.DataFrame(time_dict, index = [0])
+# b = a.transpose()
+# c = b[b[0].apply(lambda x: isinstance(x, float))]
+# d = c.sort_values(by= 0, ascending = False)
+# d
+# # %%
+# d[:].sum()
+# # %%
+# d[100:].index.values
+# # %%
+# sum = 0
+# for i in b[0]:
+#     if isinstance(i, float):
+#         sum += i
 # %%
 
 # %%

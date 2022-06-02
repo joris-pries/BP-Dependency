@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
-from keras.utils import np_utils, to_categorical
+from keras.utils import np_utils
 from keras import optimizers
 # from keras.layers.advanced_activations import PReLU
 # from keras.layers.normalization import BatchNormalization
@@ -244,6 +244,7 @@ def modified_runExp(method, X, Y, isClassification= False, mdl = "NN1", xseed = 
 
     if method == 'LOFO':
         LOFO, LOFO_Ordered = LeaveOneFeatureOut(model, X, Y)
+        LOFO = np.array(LOFO[0]) # select loss, not accuracy
         return LOFO
 
     if method == 'Garson':
@@ -258,13 +259,13 @@ def modified_runExp(method, X, Y, isClassification= False, mdl = "NN1", xseed = 
 
 
 # %%
-kwargs = {'n_observations': 200}
-X_1 = np.random.randint(10, size=kwargs['n_observations'])
-X_2 = np.random.randint(10, size=kwargs['n_observations'])
-X_3 = np.random.randint(10, size=kwargs['n_observations'])
-Y = X_1 + 10 * X_2 + 100 * X_3
-X = np.stack((X_1, X_2, X_3), axis=1)
-dataset = np.stack((X_1, X_2, X_3, Y), axis=1)
+# kwargs = {'n_observations': 200}
+# X_1 = np.random.randint(10, size=kwargs['n_observations'])
+# X_2 = np.random.randint(10, size=kwargs['n_observations'])
+# X_3 = np.random.randint(10, size=kwargs['n_observations'])
+# Y = X_1 + 10 * X_2 + 100 * X_3
+# X = np.stack((X_1, X_2, X_3), axis=1)
+# dataset = np.stack((X_1, X_2, X_3, Y), axis=1)
 
-fi_results = np.array(modified_runExp(method = 'LOFO', X= X, Y= Y, isClassification= False, mdl= 'NN1'))
+# fi_results = np.array(modified_runExp(method = 'LOFO', X= X, Y= Y, isClassification= False, mdl= 'NN1'))
 # %%
