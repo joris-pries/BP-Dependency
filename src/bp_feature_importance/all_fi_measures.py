@@ -1,4 +1,5 @@
 # %%
+from dataclasses import replace
 import os
 from contextlib import contextmanager
 from torch import seed
@@ -17,11 +18,15 @@ from datetime import datetime
 import random
 import pickle
 from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor, ExtraTreesClassifier, ExtraTreesRegressor, GradientBoostingClassifier, GradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor, IsolationForest
+from sklearn.naive_bayes import GaussianNB, BernoulliNB
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
 from scipy.stats import entropy, f_oneway, alexandergovern, pearsonr, spearmanr, pointbiserialr, kendalltau, weightedtau, somersd, linregress, siegelslopes, theilslopes, multiscale_graphcorr
 import rpy2
 from rpy2 import robjects
 from rpy2.robjects.packages import importr
 from sklearn import svm
+from sklearn.svm import SVC
 from sklearn.linear_model import ElasticNet, LogisticRegression, Ridge, LinearRegression, Lasso, SGDClassifier, SGDRegressor
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from treeinterpreter import treeinterpreter
@@ -37,6 +42,7 @@ from catboost import CatBoostClassifier, CatBoostRegressor
 from lightgbm import LGBMClassifier, LGBMRegressor
 from qii.qii import QII
 from qii.qoi import QuantityOfInterest
+from sklearn.neighbors import KNeighborsClassifier
 
 from rfi import rfi, cfi
 from fvecs.featurevec import FeatureVec
@@ -125,20 +131,43 @@ def convert_to_onehotencoded(Y):
 def create_dataset(creation, save_path, **kwargs):
     # This will create a dataset in a certain path
 
-    if creation == 'random_test':
-        X_1 = np.random.randint(10, size=kwargs['n_observations'])
-        X_2 = np.random.randint(10, size=kwargs['n_observations'])
-        Y = X_1 + 2 * X_2
-        X = np.stack((X_1, X_2), axis=1)
-        dataset = np.stack((X_1, X_2, Y), axis=1)
+    # if creation == 'random_test':
+    #     X_1 = np.random.randint(10, size=kwargs['n_observations'])
+    #     X_2 = np.random.randint(10, size=kwargs['n_observations'])
+    #     Y = X_1 + 2 * X_2
+    #     X = np.stack((X_1, X_2), axis=1)
+    #     dataset = np.stack((X_1, X_2, Y), axis=1)
 
     if creation == 'decimal_system':
         X_1 = np.random.randint(10, size=kwargs['n_observations'])
         X_2 = np.random.randint(10, size=kwargs['n_observations'])
         X_3 = np.random.randint(10, size=kwargs['n_observations'])
+        
         Y = X_1 + 10 * X_2 + 100 * X_3
         X = np.stack((X_1, X_2, X_3), axis=1)
-        dataset = np.stack((X_1, X_2, X_3, Y), axis=1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+
+    if creation == 'cloned_decimal_system':
+        X_1 = np.random.randint(10, size=kwargs['n_observations'])
+        X_2 = np.random.randint(10, size=kwargs['n_observations'])
+        X_3 = np.random.randint(10, size=kwargs['n_observations'])
+        
+        Y = X_1 + 10 * X_2 + 100 * X_3
+        X = np.stack((X_1, X_1, X_2, X_2, X_3, X_3), axis=1) #! Here is the difference
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+
+    if creation == 'decimal_system_with_independence':
+        X_1 = np.random.randint(10, size=kwargs['n_observations'])
+        X_2 = np.random.randint(10, size=kwargs['n_observations'])
+        X_3 = np.random.randint(10, size=kwargs['n_observations'])
+        I_1 = np.random.randint(2, size=kwargs['n_observations'])
+        I_2 = np.random.randint(2, size=kwargs['n_observations'])
+        I_3 = np.random.randint(2, size=kwargs['n_observations'])
+        I_4 = np.random.randint(2, size=kwargs['n_observations'])
+        I_5 = np.random.randint(2, size=kwargs['n_observations'])
+        Y = X_1 + 10 * X_2 + 100 * X_3
+        X = np.stack((X_1, X_2, X_3, I_1, I_2, I_3, I_4, I_5), axis=1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
 
     if creation == 'binary_system':
         X_1 = np.random.randint(2, size=kwargs['n_observations'])
@@ -151,19 +180,262 @@ def create_dataset(creation, save_path, **kwargs):
         X_8 = np.random.randint(2, size=kwargs['n_observations'])
         X_9 = np.random.randint(2, size=kwargs['n_observations'])
         X_10 = np.random.randint(2, size=kwargs['n_observations'])
-        
+
         Y = X_1 + 2 * X_2 + 4 * X_3 + 8 * X_4 + 16 * X_5 + 32 * X_6 + 64 * X_7 + 128 * X_8 + 256 * X_9 + 512 * X_10
         X = np.stack((X_1, X_2, X_3, X_4, X_5, X_6, X_7, X_8, X_9, X_10), axis=1)
-        dataset = np.stack((X_1, X_2, X_3, X_4, X_5, X_6, X_7, X_8, X_9, X_10, Y), axis=1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
 
-    if creation == 'hiring_system':
-        dataset = np.array(pd.DataFrame([[0, 0, 0], [0, 1, 0], [1, 0, 1], [1, 1, 1]]).sample(
-            n=kwargs['n_observations'], replace=True, weights=[0.1, 0.0, 0.4, 0.5]))
-        X = dataset[:, 0:2]
-        Y = dataset[:, 2]
+
+    if creation == 'independent_easy':
+        I_1 = np.random.randint(100, size=kwargs['n_observations'])
+        I_2 = np.random.randint(100, size=kwargs['n_observations'])
+        I_3 = np.random.randint(100, size=kwargs['n_observations'])
+        I_4 = np.random.randint(100, size=kwargs['n_observations'])
+        I_5 = np.random.randint(100, size=kwargs['n_observations'])
+
+        Y = np.random.randint(100, size=kwargs['n_observations'])
+        X = np.stack((I_1, I_2, I_3,I_4,I_5), axis=1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+
+    if creation == 'independent_hard':
+        I_1 = np.random.randint(2, size=kwargs['n_observations'])
+        I_2 = np.random.randint(2, size=kwargs['n_observations'])
+        I_3 = np.random.randint(2, size=kwargs['n_observations'])
+        I_4 = np.random.randint(2, size=kwargs['n_observations'])
+        I_5 = np.random.randint(2, size=kwargs['n_observations'])
+
+        Y = np.random.randint(2, size=kwargs['n_observations'])
+        X = np.stack((I_1, I_2, I_3,I_4,I_5), axis=1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+        
+    if creation == 'max_function_equal_dist':
+        K = 100
+        X_1 = np.random.randint(K, size=kwargs['n_observations'])
+        X_2 = np.random.randint(K, size=kwargs['n_observations'])
+        X_3 = np.random.randint(K, size=kwargs['n_observations'])
+
+        X = np.stack((X_1, X_2, X_3), axis=1)
+        Y = np.max(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)       
+        
+    if creation == 'max_function_increasing_dist_3':
+        K = 100
+        X_1 = np.random.randint(K, size=kwargs['n_observations'])
+        X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
+
+        X = np.stack((X_1, X_2, X_3), axis=1)
+        Y = np.max(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+        
+    if creation == 'max_function_increasing_dist_4':
+        K = 100
+        X_1 = np.random.randint(K, size=kwargs['n_observations'])
+        X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
+        X_4 = np.random.randint(4 * K, size=kwargs['n_observations'])
+        
+        X = np.stack((X_1, X_2, X_3, X_4), axis=1)
+        Y = np.max(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+        
+    if creation == 'max_function_increasing_dist_5':
+        K = 100
+        X_1 = np.random.randint(K, size=kwargs['n_observations'])
+        X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
+        X_4 = np.random.randint(4 * K, size=kwargs['n_observations'])
+        X_5 = np.random.randint(5 * K, size=kwargs['n_observations'])
+        
+        X = np.stack((X_1, X_2, X_3, X_4, X_5), axis=1)
+        Y = np.max(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)                 
+
+
+    if creation == 'max_function_expanding_dist_3':
+        K = 100
+        X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
+        X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
+
+        X = np.stack((X_1, X_2, X_3), axis=1)
+        Y = np.max(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+        
+    if creation == 'max_function_expanding_dist_4':
+        K = 100
+        X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
+        X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
+        X_4 = np.random.randint((-4 * K) + 1, 4 * K, size=kwargs['n_observations'])
+        
+        X = np.stack((X_1, X_2, X_3, X_4), axis=1)
+        Y = np.max(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+        
+    if creation == 'max_function_expanding_dist_5':
+        K = 100
+        X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
+        X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
+        X_4 = np.random.randint((-4 * K) + 1, 4 * K, size=kwargs['n_observations'])
+        X_5 = np.random.randint((-5 * K) + 1, 5 * K, size=kwargs['n_observations'])
+        
+        X = np.stack((X_1, X_2, X_3, X_4, X_5), axis=1)
+        Y = np.max(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)   
+
+    if creation == 'min_function_equal_dist':
+        K = 100
+        X_1 = np.random.randint(K, size=kwargs['n_observations'])
+        X_2 = np.random.randint(K, size=kwargs['n_observations'])
+        X_3 = np.random.randint(K, size=kwargs['n_observations'])
+
+        X = np.stack((X_1, X_2, X_3), axis=1)
+        Y = np.min(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)    
+
+    if creation == 'min_function_increasing_dist_3':
+        K = 100
+        X_1 = np.random.randint(K, size=kwargs['n_observations'])
+        X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
+
+        X = np.stack((X_1, X_2, X_3), axis=1)
+        Y = np.min(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+        
+    if creation == 'min_function_increasing_dist_4':
+        K = 100
+        X_1 = np.random.randint(K, size=kwargs['n_observations'])
+        X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
+        X_4 = np.random.randint(4 * K, size=kwargs['n_observations'])
+        
+        X = np.stack((X_1, X_2, X_3, X_4), axis=1)
+        Y = np.min(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+        
+    if creation == 'min_function_increasing_dist_5':
+        K = 100
+        X_1 = np.random.randint(K, size=kwargs['n_observations'])
+        X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
+        X_4 = np.random.randint(4 * K, size=kwargs['n_observations'])
+        X_5 = np.random.randint(5 * K, size=kwargs['n_observations'])
+        
+        X = np.stack((X_1, X_2, X_3, X_4, X_5), axis=1)
+        Y = np.min(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)                 
+
+
+    if creation == 'min_function_expanding_dist_3':
+        K = 100
+        X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
+        X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
+
+        X = np.stack((X_1, X_2, X_3), axis=1)
+        Y = np.min(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+        
+    if creation == 'min_function_expanding_dist_4':
+        K = 100
+        X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
+        X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
+        X_4 = np.random.randint((-4 * K) + 1, 4 * K, size=kwargs['n_observations'])
+        
+        X = np.stack((X_1, X_2, X_3, X_4), axis=1)
+        Y = np.min(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+        
+    if creation == 'min_function_expanding_dist_5':
+        K = 100
+        X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
+        X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
+        X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
+        X_4 = np.random.randint((-4 * K) + 1, 4 * K, size=kwargs['n_observations'])
+        X_5 = np.random.randint((-5 * K) + 1, 5 * K, size=kwargs['n_observations'])
+        
+        X = np.stack((X_1, X_2, X_3, X_4, X_5), axis=1)
+        Y = np.min(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)   
+        
+    if creation == 'pairwise_combined_max':
+        K = 100
+        X_1 = np.random.randint(K, size=kwargs['n_observations'])
+        X_2 = np.random.randint(K, size=kwargs['n_observations'])
+        X_3 = np.random.randint(K, size=kwargs['n_observations'])
+        Z_12 = np.max(np.stack((X_1, X_2), axis = 1), axis = 1)
+        Z_13 = np.max(np.stack((X_1, X_3), axis = 1), axis = 1)
+        Z_23 = np.max(np.stack((X_2, X_3), axis = 1), axis = 1)
+        
+        X = np.stack((X_1, X_2, X_3, Z_12, Z_13, Z_23), axis=1)
+        Y = np.max(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)           
+        
+    if creation == 'pairwise_combined_min':
+        K = 100
+        X_1 = np.random.randint(K, size=kwargs['n_observations'])
+        X_2 = np.random.randint(K, size=kwargs['n_observations'])
+        X_3 = np.random.randint(K, size=kwargs['n_observations'])
+        Z_12 = np.min(np.stack((X_1, X_2), axis = 1), axis = 1)
+        Z_13 = np.min(np.stack((X_1, X_3), axis = 1), axis = 1)
+        Z_23 = np.min(np.stack((X_2, X_3), axis = 1), axis = 1)
+        
+        X = np.stack((X_1, X_2, X_3, Z_12, Z_13, Z_23), axis=1)
+        Y = np.min(X, axis = 1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)   
+
+    if creation == 'prob_selected':
+        w = kwargs['prob_1']
+        X_1 = np.random.randint(2, size=kwargs['n_observations'])
+        X_2 = np.random.randint(2, size=kwargs['n_observations'])
+        S =  np.random.choice([0,1], size=kwargs['n_observations'], replace= True, p= [w, 1-w])
+        
+        Y = np.array([[X_1[i], X_2[i]][S[i]] for i in range(kwargs['n_observations'])])
+        
+        def help_function(x, s):
+            if x ==0 & s == 0:
+                return 0
+            if x == 0 & s == 1:
+                return 1
+            if x == 1 & s == 0:
+                return 2
+            if x == 1 & s == 1:
+                return 3      
+        X_1_with_S = np.array([help_function(X_1[i], S[i]) for i in range(kwargs['n_observations'])])
+        X_2_with_S = np.array([help_function(X_2[i], S[i]) for i in range(kwargs['n_observations'])])
+        
+        X = np.stack((X_1_with_S, X_2_with_S), axis=1)
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)   
+
+    # if creation == 'max_uniform_increasing':
+    #     # X_1 = np.random.uniform(low = 0, high= 1, size= kwargs['n_observations'])
+    #     # X_2 = np.random.uniform(low = 0, high= 2, size= kwargs['n_observations'])
+    #     # X_3 = np.random.uniform(low = 0, high= 3, size= kwargs['n_observations'])
+    #     # X_4 = np.random.uniform(low = 0, high= 4, size= kwargs['n_observations'])
+    #     X_1 = np.random.randint(low = 0, high= 1, size= kwargs['n_observations'])
+    #     X_2 = np.random.randint(low = 0, high= 2, size= kwargs['n_observations'])
+    #     X_3 = np.random.randint(low = 0, high= 3, size= kwargs['n_observations'])
+    #     # X_4 = np.random.randint(low = 0, high= 4, size= kwargs['n_observations'])
+    #     # X = np.stack((X_1,X_2,X_3,X_4), axis =1)
+    #     X = np.stack((X_1,X_2,X_3), axis =1)
+    #     Y = np.max(X, axis = 1)
+    #     # dataset = np.stack((X_1,X_2,X_3,X_4,Y), axis =1)
+    #     dataset = np.stack((X_1,X_2,X_3,Y), axis =1)
+
+    # if creation == 'hiring_system':
+    #     dataset = np.array(pd.DataFrame([[0, 0, 0], [0, 1, 0], [1, 0, 1], [1, 1, 1]]).sample(
+    #         n=kwargs['n_observations'], replace=True, weights=[0.1, 0.0, 0.4, 0.5]))
+    #     X = dataset[:, 0:2]
+    #     Y = dataset[:, 2]
 
     labelencoded_Y = convert_to_labelencoded(Y)
-    onehotencoded_Y = convert_to_onehotencoded(Y)
+    # TODO Even dit uitgezet, want onehotencoded werd veels te groot door n_observations = 200000
+    onehotencoded_Y = np.inf
+    # onehotencoded_Y = convert_to_onehotencoded(Y)
 
     with open(save_path, 'wb') as f:
         pickle.dump([X, Y, labelencoded_Y, onehotencoded_Y, dataset], f)
@@ -174,7 +446,48 @@ def create_dataset(creation, save_path, **kwargs):
 # create_dataset('decimal_system', 'datasets/decimal_system_2000.pickle', n_observations=2000)
 # create_dataset('random_test', 'datasets/random_test.pickle', n_observations = 20000)
 # create_dataset('hiring_system', 'datasets/hiring_system_200.pickle', n_observations=200)
-# create_dataset('binary_system', 'datasets/binary_system_200.pickle', n_observations=200)
+# create_dataset('binary_system', 'datasets/binary_system_20.pickle', n_observations=200)
+# create_dataset('max_uniform_increasing', 'datasets/max_uniform_increasing_20000000.pickle', n_observations=20000000)
+# datasets created for experiments
+experiment_name = 'experiment_2'
+n_observations = 200
+# np.random.seed(1)
+# os.makedirs(f'datasets/{experiment_name}', exist_ok=True)
+# create_datasets_dict = {
+#     1: f'create_dataset("independent_easy", "datasets/{experiment_name}/independent_easy_{n_observations}.pickle", n_observations = {n_observations})',
+#     2: f'create_dataset("independent_hard", "datasets/{experiment_name}/independent_hard_{n_observations}.pickle", n_observations = {n_observations})',
+#     3: f'create_dataset("decimal_system", "datasets/{experiment_name}/decimal_system_{n_observations}.pickle", n_observations = {n_observations})',
+#     4: f'create_dataset("cloned_decimal_system", "datasets/{experiment_name}/cloned_decimal_system_{n_observations}.pickle", n_observations = {n_observations})',
+#     5: f'create_dataset("binary_system", "datasets/{experiment_name}/binary_system_{n_observations}.pickle", n_observations = {n_observations})',
+#     6: f'create_dataset("decimal_system_with_independence", "datasets/{experiment_name}/decimal_system_with_independence_{n_observations}.pickle", n_observations = {n_observations})',
+#     7: f'create_dataset("prob_selected", "datasets/{experiment_name}/prob_selected_025_{n_observations}.pickle", n_observations = {n_observations}, prob_1 = 1/4)',
+#     8: f'create_dataset("max_function_equal_dist", "datasets/{experiment_name}/max_function_equal_dist_{n_observations}.pickle", n_observations = {n_observations})',
+#     9: f'create_dataset("min_function_equal_dist", "datasets/{experiment_name}/min_function_equal_dist_{n_observations}.pickle", n_observations = {n_observations})',
+#     10: f'create_dataset("max_function_increasing_dist_3", "datasets/{experiment_name}/max_function_increasing_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
+#     11: f'create_dataset("min_function_increasing_dist_3", "datasets/{experiment_name}/min_function_increasing_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
+#     12: f'create_dataset("max_function_expanding_dist_3", "datasets/{experiment_name}/max_function_expanding_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
+#     13: f'create_dataset("min_function_expanding_dist_3", "datasets/{experiment_name}/min_function_expanding_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
+#     14: f'create_dataset("pairwise_combined_max", "datasets/{experiment_name}/pairwise_combined_max_{n_observations}.pickle", n_observations = {n_observations})',
+#     15: f'create_dataset("pairwise_combined_min", "datasets/{experiment_name}/pairwise_combined_min.pickle", n_observations = {n_observations})',
+#     16: f'create_dataset("prob_selected", "datasets/{experiment_name}/prob_selected_033_{n_observations}.pickle", n_observations = {n_observations}, prob_1 = 1/3)',
+#     17: f'create_dataset("prob_selected", "datasets/{experiment_name}/prob_selected_02_{n_observations}.pickle", n_observations = {n_observations}, prob_1 = 1/5)',
+#     18: f'create_dataset("max_function_increasing_dist_4", "datasets/{experiment_name}/max_function_increasing_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
+#     19: f'create_dataset("min_function_increasing_dist_4", "datasets/{experiment_name}/min_function_increasing_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
+#     20: f'create_dataset("max_function_expanding_dist_4", "datasets/{experiment_name}/max_function_expanding_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
+#     21: f'create_dataset("min_function_expanding_dist_4", "datasets/{experiment_name}/min_function_expanding_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
+#     22: f'create_dataset("max_function_increasing_dist_5", "datasets/{experiment_name}/max_function_increasing_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
+#     23: f'create_dataset("min_function_increasing_dist_5", "datasets/{experiment_name}/min_function_increasing_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
+#     24: f'create_dataset("max_function_expanding_dist_5", "datasets/{experiment_name}/max_function_expanding_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
+#     25: f'create_dataset("min_function_expanding_dist_5", "datasets/{experiment_name}/min_function_expanding_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
+# }
+# for value in create_datasets_dict.values():
+#     eval(value)
+
+
+
+
+
+
 # %%
 
 
@@ -190,9 +503,6 @@ def load_dataset(data_path):
     return X, Y, labelencoded_Y, onehotencoded_Y, dataset
 
 
-# %%
-
-# %%
 
 # %%
 
@@ -226,52 +536,27 @@ def parse_inputs(fi_method_name, **kwargs):
 
 # %%
 
-# TODO! Nog een lijstje met classifiers gevonden
-# from sklearn.ensemble import RandomForestClassifier, VotingClassifier, GradientBoostingClassifier, AdaBoostClassifier
-# from sklearn.linear_model import LogisticRegression
-# from sklearn.naive_bayes import GaussianNB, BernoulliNB
-# from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-# from sklearn.neighbors import KNeighborsClassifier
-# from sklearn.tree import DecisionTreeClassifier
-# from sklearn.svm import SVC
-# from sklearn.neural_network import MLPClassifier
+# TODO: Don't know if XGBRFClassifier works, as only zero FI are produced
 
-# possible_classifiers = {"knn": KNeighborsClassifier,
-#                         "rf": RandomForestClassifier,
-#                         "mv": VotingClassifier,
-#                         "gb": GradientBoostingClassifier,
-#                         "ab": AdaBoostClassifier,
-#                         "nb_g": GaussianNB,
-#                         "nb_b": BernoulliNB,
-#                         "lda": LinearDiscriminantAnalysis,
-#                         "dt": DecisionTreeClassifier,
-#                         "svc": SVC,
-#                         "lr": LogisticRegression,
-#                         "mlp": MLPClassifier,
+# list of models that are often used together
+standard_classification_models = ['LogisticRegression', 'Ridge', 'LinearRegression', 'Lasso', 'SGDClassifier', 'MLPClassifier', 'KNeighborsClassifier', 'GradientBoostingClassifier', 'AdaBoostClassifier', 'GaussianNB', 'BernoulliNB', 'LinearDiscriminantAnalysis', 'DecisionTreeClassifier', 'RandomForestClassifier', 'SVC', 'CatBoostClassifier', 'LGBMClassifier', 'XGBClassifier', 'XGBRFClassifier']
+
+tree_based_classification_models = ['XGBClassifier', 'XGBRFClassifier', 'GradientBoostingClassifier', 'AdaBoostClassifier', 'DecisionTreeClassifier', 'RandomForestClassifier', 'CatBoostClassifier', 'LGBMClassifier', 'ExtraTreeClassifier', 'ExtraTreesClassifier']
 
 
-# TODO! Kijken waar catboostclassifier en regressor + lightbm classifier en regressor nog bij kunnen als model
+# List of FI (classification only) methods:
 list_of_all_methods = []
-# List of FI methods:
 # bp_feature_importance
 list_of_all_methods += ['bp_feature_importance']
 # from scikit-learn
 # AdaBoost_Classifier (default)
 list_of_all_methods += ['AdaBoost_Classifier']
-# AdaBoost_Regressor (default)
-list_of_all_methods += ['AdaBoost_Regressor']
 # Random_Forest_Classifier (gini, entropy)
 list_of_all_methods += ['Random_Forest_Classifier_' + i for i in ['gini', 'entropy']]
-# Random_Forest_Regressor (gini, entropy)
-list_of_all_methods += ['Random_Forest_Regressor']
 # Extra_Trees_Classifier (gini, entropy)
 list_of_all_methods += ['Extra_Trees_Classifier_' + i for i in ['gini', 'entropy']]
-# Extra_Trees_Regressor (gini, entropy)
-list_of_all_methods += ['Extra_Trees_Regressor']
 # Gradient_Boosting_Classifier (default)
 list_of_all_methods += ['Gradient_Boosting_Classifier']
-# Gradient_Boosting_Regressor (default)
-list_of_all_methods += ['Gradient_Boosting_Regressor']
 # KL_divergence (default)
 list_of_all_methods += ['KL_divergence']
 # R_Mutual_Information (default)
@@ -283,168 +568,294 @@ list_of_all_methods += ['EL_absolute_weights']
 # Fisher_Score (default)
 list_of_all_methods += ['Fisher_Score']
 # permutation_importance_classifier
-list_of_all_methods += ['permutation_importance_classifier_' + i for i in ['LogisticRegression', 'Ridge', 'LinearRegression',
-                                                                           'Lasso', 'SGDClassifier', 'SGDRegressor', 'MLPClassifier', 'MLPRegressor', 'SymbolicRegressor']]
-# permutation_importance_regressor
-list_of_all_methods += ['permutation_importance_regressor_' + i for i in ['LogisticRegression', 'Ridge', 'LinearRegression',
-                                                                          'Lasso', 'SGDClassifier', 'SGDRegressor', 'MLPClassifier', 'MLPRegressor', 'SymbolicRegressor']]
-# shap_explainer_tree_classifier (XGBClassifier, XGBRFClassifier)
-# TODO: Don't know if XGBRFClassifier works, as only zero FI are produced
-# TODO: kunnen niet ook andere methode zoals RF?
-list_of_all_methods += ['shap_explainer_tree_classifier_' + i for i in ['XGBClassifier', 'XGBRFClassifier']]
-# shap_explainer_tree_regressor (XGBRegressor, XGBRFRegressor)
-list_of_all_methods += ['shap_explainer_tree_regressor_' + i for i in ['XGBRegressor', 'XGBRFRegressor']]
+list_of_all_methods += ['permutation_importance_classifier_' + i for i in standard_classification_models]
+# shap_explainer_tree_classifier 
+list_of_all_methods += ['shap_explainer_tree_classifier_' + i for i in tree_based_classification_models]
 # shap_explainer_linear_classifier (LogisticRegression, SGDClassifier)
 list_of_all_methods += ['shap_explainer_linear_classifier_' + i for i in ['LogisticRegression', 'SGDClassifier']]
-# shap_explainer_linear_regressor (Ridge, LinearRegression, Lasso, SGDRegressor)
-list_of_all_methods += ['shap_explainer_linear_regressor_' + i for i in ['Ridge', 'LinearRegression', 'Lasso', 'SGDRegressor']]
 # shap_explainer_permutation_classifier (LogisticRegression, SGDClassifier, MLPClassifier, XGBClassifier, XGBRFClassifier)
 list_of_all_methods += ['shap_explainer_permutation_classifier_' +
-                        i for i in ['LogisticRegression', 'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
-# shap_explainer_permutation_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
-list_of_all_methods += ['shap_explainer_permutation_regressor_' + i for i in ['Ridge', 'LinearRegression',
-                                                                              'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+                        i for i in standard_classification_models]
+
 # shap_explainer_partition_classifier (LogisticRegression, SGDClassifier, MLPClassifier, XGBClassifier, XGBRFClassifier)
-list_of_all_methods += ['shap_explainer_partition_classifier_' + i for i in ['LogisticRegression',
-                                                                             'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
-# shap_explainer_partition_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
-list_of_all_methods += ['shap_explainer_partition_regressor_' + i for i in ['Ridge', 'LinearRegression',
-                                                                            'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+list_of_all_methods += ['shap_explainer_partition_classifier_' + i for i in standard_classification_models]
+
 # shap_explainer_sampling_classifier (LogisticRegression, SGDClassifier, MLPClassifier, XGBClassifier, XGBRFClassifier)
-list_of_all_methods += ['shap_explainer_sampling_classifier_' + i for i in ['LogisticRegression',
-                                                                            'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
-# shap_explainer_sampling_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
-list_of_all_methods += ['shap_explainer_sampling_regressor_' + i for i in ['Ridge', 'LinearRegression',
-                                                                           'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+list_of_all_methods += ['shap_explainer_sampling_classifier_' + i for i in standard_classification_models]
+
 # shap_explainer_kernel_classifier (LogisticRegression, SGDClassifier, MLPClassifier, XGBClassifier, XGBRFClassifier)
-list_of_all_methods += ['shap_explainer_kernel_classifier_' + i for i in ['LogisticRegression',
-                                                                          'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
-# shap_explainer_kernel_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
-list_of_all_methods += ['shap_explainer_kernel_regressor_' + i for i in ['Ridge', 'LinearRegression',
-                                                                         'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+list_of_all_methods += ['shap_explainer_kernel_classifier_' + i for i in standard_classification_models]
+
 # shap_explainer_exact_classifier (LogisticRegression, SGDClassifier, MLPClassifier, XGBClassifier, XGBRFClassifier)
-list_of_all_methods += ['shap_explainer_exact_classifier_' + i for i in ['LogisticRegression',
-                                                                         'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
-# shap_explainer_exact_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
-list_of_all_methods += ['shap_explainer_exact_regressor_' + i for i in ['Ridge', 'LinearRegression',
-                                                                        'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+list_of_all_methods += ['shap_explainer_exact_classifier_' + i for i in standard_classification_models]
+
 # R_caret_classifier
 list_of_all_methods += ['R_caret_classifier_' + i for i in
                         ['snn', 'knn', 'bayesglm', 'lssvmRadial', 'rocc', 'ownn', 'ORFpls', 'rFerns', 'treebag', 'RRF', 'svmRadial', 'ctree2', 'evtree', 'pda', 'rpart', 'cforest', 'svmLinear', 'xyf', 'C5.0Tree', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'FH.GBML', 'svmLinear2', 'bstSm', 'LogitBoost', 'wsrf', 'plr', 'xgbLinear', 'rf', 'null', 'protoclass', 'monmlp', 'Rborist', 'mlpWeightDecay', 'svmRadialWeights', 'mlpML', 'ctree', 'loclda', 'sdwd', 'mlpWeightDecayML', 'svmRadialSigma', 'bstTree', 'dnn', 'ordinalRF', 'pda2', 'BstLm', 'RRFglobal', 'mlp', 'rpart1SE', 'pcaNNet', 'ORFsvm', 'parRF', 'rpart2', 'gaussprPoly', 'C5.0Rules', 'rda', 'rbfDDA', 'multinom', 'gaussprLinear', 'svmPoly']]
-# R_caret_regressor
-list_of_all_methods += ['R_caret_regressor_' + i for i in
-                        ['widekernelpls', 'pcr', 'knn', 'bayesglm', 'GFS.FR.MOGUL', 'qrnn', 'treebag', 'rqlasso', 'nnet', 'svmRadial', 'nnls', 'ctree2', 'evtree', 'rpart', 'cforest', 'svmLinear', 'enet', 'FIR.DM', 'xyf', 'HYFIS', 'leapSeq', 'glm', 'glm.nb', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'ppr', 'DENFIS', 'svmLinear2', 'bstSm', 'lm', 'lars2', 'pls', 'rvmRadial', 'xgbLinear', 'simpls', 'rf', 'null', 'monmlp', 'Rborist', 'relaxo', 'GFS.THRIFT', 'mlpWeightDecay', 'randomGLM', 'mlpML', 'ctree', 'brnn', 'mlpWeightDecayML', 'kernelpls', 'krlsRadial', 'spikeslab', 'svmRadialSigma', 'lasso', 'glmnet', 'bstTree', 'dnn', 'icr', 'leapBackward', 'qrf', 'leapForward', 'BstLm', 'ANFIS', 'glmboost', 'mlp', 'rpart1SE', 'lmStepAIC', 'pcaNNet', 'lars', 'glmStepAIC', 'rpart2', 'gaussprPoly', 'ridge', 'FS.HGD', 'rbfDDA', 'gaussprLinear', 'svmPoly', 'penalized']]
+
 # rfi_classifier
-list_of_all_methods += ['rfi_classifier_' + i for i in ['LogisticRegression',
-                                                        'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
-# rfi_regressor
-list_of_all_methods += ['rfi_regressor_' + i for i in ['Ridge', 'LinearRegression',
-                                                       'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+list_of_all_methods += ['rfi_classifier_' + i for i in standard_classification_models]
+
 # cfi_classifier
-list_of_all_methods += ['cfi_classifier_' + i for i in ['LogisticRegression',
-                                                        'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
-# cfi_regressor
-list_of_all_methods += ['cfi_regressor_' + i for i in ['Ridge', 'LinearRegression',
-                                                       'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+list_of_all_methods += ['cfi_classifier_' + i for i in standard_classification_models]
+
 # featurevec_classifier
 list_of_all_methods += ['featurevec_classifier']
-# featurevec_regressor
-list_of_all_methods += ['featurevec_regressor']
+
 # R_firm_classifier
 list_of_all_methods += ['R_firm_classifier_' + i for i in
                         ['knn', 'treebag', 'RRF', 'ctree2', 'evtree', 'pda', 'rpart', 'cforest', 'xyf', 'C5.0Tree', 'kknn', 'gaussprRadial', 'LogitBoost', 'wsrf', 'xgbLinear', 'rf', 'null', 'monmlp', 'Rborist', 'mlpWeightDecay', 'mlpML', 'ctree', 'mlpWeightDecayML', 'dnn', 'pda2', 'RRFglobal', 'mlp', 'rpart1SE', 'parRF', 'rpart2', 'gaussprPoly', 'C5.0Rules', 'rbfDDA', 'multinom', 'gaussprLinear']]
-# R_firm_regressor
-list_of_all_methods += ['R_firm_regressor_' + i for i in
-                        ['widekernelpls', 'pcr', 'knn', 'bayesglm', 'GFS.FR.MOGUL', 'qrnn', 'treebag', 'rqlasso', 'nnet', 'svmRadial', 'nnls', 'ctree2', 'evtree', 'rpart', 'cforest', 'svmLinear', 'enet', 'FIR.DM', 'xyf', 'HYFIS', 'leapSeq', 'glm', 'glm.nb', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'ppr', 'DENFIS', 'svmLinear2', 'bstSm', 'lm', 'lars2', 'pls', 'rvmRadial', 'xgbLinear', 'simpls', 'rf', 'null', 'monmlp', 'Rborist', 'relaxo', 'GFS.THRIFT', 'mlpWeightDecay', 'randomGLM', 'mlpML', 'ctree', 'brnn', 'mlpWeightDecayML', 'kernelpls', 'krlsRadial', 'spikeslab', 'svmRadialSigma', 'lasso', 'glmnet', 'bstTree', 'dnn', 'icr', 'leapBackward', 'qrf', 'leapForward', 'BstLm', 'ANFIS', 'glmboost', 'mlp', 'rpart1SE', 'lmStepAIC', 'pcaNNet', 'lars', 'glmStepAIC', 'rpart2', 'gaussprPoly', 'ridge', 'FS.HGD', 'rbfDDA', 'gaussprLinear', 'svmPoly', 'penalized']]
+
 # PCA
 list_of_all_methods += ['PCA_sum']
 # PCA_weighted
 list_of_all_methods += ['PCA_weighted']
 # varimp_classifier
 list_of_all_methods += ['R_varimp_classifier']
-# varimp_regressor
-list_of_all_methods += ['R_varimp_regressor']
 # pimp_classifier
 list_of_all_methods += ['R_pimp_classifier']
-# pimp_regressor
-list_of_all_methods += ['R_pimp_regressor']
 # vip_sum_classifier
 list_of_all_methods += ['R_vip_sum_classifier_' + i for i in ['plsda', 'splsda']]
-# vip_sum_regressor
-list_of_all_methods += ['R_vip_sum_regressor_' + i for i in ['pls', 'spls']]
 # vip_weighted_X_classifier
 list_of_all_methods += ['R_vip_weighted_X_classifier_' + i for i in ['plsda', 'splsda']]
-# vip_weighted_X_regressor
-list_of_all_methods += ['R_vip_weighted_X_regressor_' + i for i in ['pls', 'spls']]
 # vip_weighted_Y_classifier
 list_of_all_methods += ['R_vip_weighted_Y_classifier_' + i for i in ['plsda', 'splsda']]
-# vip_weighted_Y_regressor
-list_of_all_methods += ['R_vip_weighted_Y_regressor_' + i for i in ['pls', 'spls']]
 # treeinterpreter_classifier
-list_of_all_methods += ['treeinterpreter_classifier_' + i for i in ['DecisionTreeClassifier',
-                                                                    'ExtraTreeClassifier', 'RandomForestClassifier', 'ExtraTreesClassifier', 'ExtraTreeClassifier']]
-# treeinterpreter_regressor
-list_of_all_methods += ['treeinterpreter_regressor_' + i for i in ['DecisionTreeRegressor',
-                                                                   'ExtraTreeRegressor', 'RandomForestRegressor', 'ExtraTreesRegressor', 'ExtraTreeRegressor']]
+list_of_all_methods += ['treeinterpreter_classifier_' + i for i in tree_based_classification_models]
+
 # scipy_stats
 list_of_all_methods += ['scipy_stats_' + i for i in ['f_oneway', 'alexandergovern', 'pearsonr', 'spearmanr', 'pointbiserialr',
                                                      'kendalltau', 'weightedtau', 'somersd', 'linregress', 'siegelslopes', 'theilslopes', 'multiscale_graphcorr']]
 # booster_classifier (XGBClassifier)
-list_of_all_methods += ['booster_classifier_' + j + '_' + i for j in ['weight', 'gain', 'cover'] for i in ['XGBClassifier']]
-# booster_regressor (XGBRegressor, XGBRFRegressor)
-list_of_all_methods += ['booster_regressor_' + j + '_' + i for j in ['weight', 'gain', 'cover'] for i in ['XGBRegressor', 'XGBRFRegressor']]
+list_of_all_methods += ['booster_classifier_' + j + '_' + i for j in ['weight', 'gain', 'cover'] for i in tree_based_classification_models]
+
 # TODO uitzoeken of chi2 regression of classification is
 # sklearn_feature_selection_classifier
 list_of_all_methods += ['sklearn_feature_selection_classifier_' + i for i in ['chi2', 'f_classif', 'mutual_info_classif']]
-# sklearn_feature_selection_regressor
-list_of_all_methods += ['sklearn_feature_selection_regressor_' + i for i in ['chi2', 'f_regression', 'r_regression', 'mutual_info_regression']]
+
 # R_FSinR_classifier
 list_of_all_methods += ['R_FSinR_classifier_' + i for i in ['binaryConsistency', 'chiSquared', 'cramer', 'gainRatio', 'giniIndex',
                                                             'IEConsistency', 'IEPConsistency', 'mutualInformation',  'roughsetConsistency', 'ReliefFeatureSetMeasure', 'symmetricalUncertain']]
-# R_FSinR_regressor
-list_of_all_methods += ['R_FSinR_regressor_' + i for i in ['binaryConsistency', 'chiSquared', 'cramer', 'gainRatio', 'giniIndex',
-                                                           'IEConsistency', 'IEPConsistency', 'mutualInformation',  'roughsetConsistency', 'ReliefFeatureSetMeasure', 'symmetricalUncertain']]
+
 # sage_classifier
 list_of_all_methods += ['sage_classifier_' + j + '_' + i for j in ['IteratedEstimator', 'PermutationEstimator', 'KernelEstimator', 'SignEstimator']
-                        for i in ['LogisticRegression', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier', 'CatBoostClassifier', 'LGBMClassifier']]
-# runs too slow
-list_of_all_methods.remove('sage_classifier_PermutationEstimator_LogisticRegression')
-# sage_regressor
-list_of_all_methods += ['sage_regressor_' + j + '_' + i for j in ['IteratedEstimator', 'PermutationEstimator', 'KernelEstimator', 'SignEstimator'] for i in [
-    'Ridge', 'LinearRegression', 'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor', 'CatBoostRegressor', 'LGBMRegressor']]
-# TODO! UItzoeken welke modellen hier allemaal bij kunnen. Het moet in ieder geval een predict functie hebben
+                        for i in standard_classification_models]
+
+
 # QII_averaged_classifier
 list_of_all_methods += ['QII_averaged_classifier_' + j + '_' + i for j in ['shapley', 'banzhaf']
-                        for i in ['LogisticRegression', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier', 'CatBoostClassifier', 'LGBMClassifier']]
-# QII_averaged_regressor
-list_of_all_methods += ['QII_averaged_regressor_' + j + '_' + i for j in ['shapley', 'banzhaf'] for i in ['Ridge', 'LinearRegression',
-                                                                                                          'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor', 'CatBoostRegressor', 'LGBMRegressor']]
+                        for i in standard_classification_models]
+
 # sunnies
 list_of_all_methods += ['sunnies_' + i for i in ['R2', 'DC', 'BCDC', 'AIDC', 'HSIC']]
 # rebelosa_classifier
 list_of_all_methods += ['rebelosa_classifier_' + i for i in ['RF', 'Garson_NN1', 'Garson_NN2', 'VIANN_NN1', 'VIANN_NN2', 'LOFO_NN1', 'LOFO_NN2']]
-# rebelosa_regressor
-list_of_all_methods += ['rebelosa_regressor_' + i for i in ['RF', 'Garson_NN1', 'Garson_NN2', 'VIANN_NN1', 'VIANN_NN2', 'LOFO_NN1', 'LOFO_NN2']]
+
 # relief_classifier
 list_of_all_methods += ['relief_classifier_' + i for i in ['Relief', 'ReliefF', 'RReliefF']]
-# relief_regressor
-list_of_all_methods += ['relief_regressor_' + i for i in ['Relief', 'ReliefF', 'RReliefF']]
+
 # DIFFI
 list_of_all_methods += ['DIFFI']
 # ITMO
 list_of_all_methods += ['ITMO_' + i for i in ["fit_criterion_measure", "f_ratio_measure", "gini_index", "su_measure", "spearman_corr", "pearson_corr", "fechner_corr", "kendall_corr", "chi2_measure", "anova", "laplacian_score",
                                               "information_gain", "modified_t_score"] + ["MIM", "MRMR", "JMI", "CIFE", "CMIM", "ICAP", "DCSF", "CFR", "MRI", "IWFS"] + ['NDFS', 'RFS', 'SPEC', 'MCFS', 'UDFS']]
 
-# %%
 
-# removed due to time constraints:
-for i in ['sage_classifier_PermutationEstimator_MLPClassifier',
-          'sage_classifier_PermutationEstimator_XGBClassifier',
-          'sage_classifier_PermutationEstimator_LGBMClassifier',
-          'sage_classifier_KernelEstimator_XGBRFClassifier',
-          'sage_classifier_KernelEstimator_CatBoostClassifier',
-          'sage_classifier_KernelEstimator_LGBMClassifier']:
-    list_of_all_methods.remove(i)
+# list_of_all_methods = []
+# # List of FI methods:
+# # bp_feature_importance
+# list_of_all_methods += ['bp_feature_importance']
+# # from scikit-learn
+# # AdaBoost_Classifier (default)
+# list_of_all_methods += ['AdaBoost_Classifier']
+# # AdaBoost_Regressor (default)
+# list_of_all_methods += ['AdaBoost_Regressor']
+# # Random_Forest_Classifier (gini, entropy)
+# list_of_all_methods += ['Random_Forest_Classifier_' + i for i in ['gini', 'entropy']]
+# # Random_Forest_Regressor (gini, entropy)
+# list_of_all_methods += ['Random_Forest_Regressor']
+# # Extra_Trees_Classifier (gini, entropy)
+# list_of_all_methods += ['Extra_Trees_Classifier_' + i for i in ['gini', 'entropy']]
+# # Extra_Trees_Regressor (gini, entropy)
+# list_of_all_methods += ['Extra_Trees_Regressor']
+# # Gradient_Boosting_Classifier (default)
+# list_of_all_methods += ['Gradient_Boosting_Classifier']
+# # Gradient_Boosting_Regressor (default)
+# list_of_all_methods += ['Gradient_Boosting_Regressor']
+# # KL_divergence (default)
+# list_of_all_methods += ['KL_divergence']
+# # R_Mutual_Information (default)
+# list_of_all_methods += ['R_Mutual_Information']
+# # SVR_absolute_weights (rbf, linear)
+# list_of_all_methods += ['SVR_absolute_weights_' + i for i in ['linear']]
+# # EL_absolute_weights (default)
+# list_of_all_methods += ['EL_absolute_weights']
+# # Fisher_Score (default)
+# list_of_all_methods += ['Fisher_Score']
+# # permutation_importance_classifier
+# list_of_all_methods += ['permutation_importance_classifier_' + i for i in ['LogisticRegression', 'Ridge', 'LinearRegression',
+#                                                                            'Lasso', 'SGDClassifier', 'SGDRegressor', 'MLPClassifier', 'MLPRegressor', 'SymbolicRegressor']]
+# # permutation_importance_regressor
+# list_of_all_methods += ['permutation_importance_regressor_' + i for i in ['LogisticRegression', 'Ridge', 'LinearRegression',
+#                                                                           'Lasso', 'SGDClassifier', 'SGDRegressor', 'MLPClassifier', 'MLPRegressor', 'SymbolicRegressor']]
+# # shap_explainer_tree_classifier (XGBClassifier, XGBRFClassifier)
+# # TODO: Don't know if XGBRFClassifier works, as only zero FI are produced
+# # TODO: kunnen niet ook andere methode zoals RF?
+# list_of_all_methods += ['shap_explainer_tree_classifier_' + i for i in ['XGBClassifier', 'XGBRFClassifier']]
+# # shap_explainer_tree_regressor (XGBRegressor, XGBRFRegressor)
+# list_of_all_methods += ['shap_explainer_tree_regressor_' + i for i in ['XGBRegressor', 'XGBRFRegressor']]
+# # shap_explainer_linear_classifier (LogisticRegression, SGDClassifier)
+# list_of_all_methods += ['shap_explainer_linear_classifier_' + i for i in ['LogisticRegression', 'SGDClassifier']]
+# # shap_explainer_linear_regressor (Ridge, LinearRegression, Lasso, SGDRegressor)
+# list_of_all_methods += ['shap_explainer_linear_regressor_' + i for i in ['Ridge', 'LinearRegression', 'Lasso', 'SGDRegressor']]
+# # shap_explainer_permutation_classifier (LogisticRegression, SGDClassifier, MLPClassifier, XGBClassifier, XGBRFClassifier)
+# list_of_all_methods += ['shap_explainer_permutation_classifier_' +
+#                         i for i in ['LogisticRegression', 'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
+# # shap_explainer_permutation_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
+# list_of_all_methods += ['shap_explainer_permutation_regressor_' + i for i in ['Ridge', 'LinearRegression',
+#                                                                               'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+# # shap_explainer_partition_classifier (LogisticRegression, SGDClassifier, MLPClassifier, XGBClassifier, XGBRFClassifier)
+# list_of_all_methods += ['shap_explainer_partition_classifier_' + i for i in ['LogisticRegression',
+#                                                                              'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
+# # shap_explainer_partition_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
+# list_of_all_methods += ['shap_explainer_partition_regressor_' + i for i in ['Ridge', 'LinearRegression',
+#                                                                             'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+# # shap_explainer_sampling_classifier (LogisticRegression, SGDClassifier, MLPClassifier, XGBClassifier, XGBRFClassifier)
+# list_of_all_methods += ['shap_explainer_sampling_classifier_' + i for i in ['LogisticRegression',
+#                                                                             'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
+# # shap_explainer_sampling_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
+# list_of_all_methods += ['shap_explainer_sampling_regressor_' + i for i in ['Ridge', 'LinearRegression',
+#                                                                            'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+# # shap_explainer_kernel_classifier (LogisticRegression, SGDClassifier, MLPClassifier, XGBClassifier, XGBRFClassifier)
+# list_of_all_methods += ['shap_explainer_kernel_classifier_' + i for i in ['LogisticRegression',
+#                                                                           'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
+# # shap_explainer_kernel_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
+# list_of_all_methods += ['shap_explainer_kernel_regressor_' + i for i in ['Ridge', 'LinearRegression',
+#                                                                          'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+# # shap_explainer_exact_classifier (LogisticRegression, SGDClassifier, MLPClassifier, XGBClassifier, XGBRFClassifier)
+# list_of_all_methods += ['shap_explainer_exact_classifier_' + i for i in ['LogisticRegression',
+#                                                                          'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
+# # shap_explainer_exact_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
+# list_of_all_methods += ['shap_explainer_exact_regressor_' + i for i in ['Ridge', 'LinearRegression',
+#                                                                         'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+# # R_caret_classifier
+# list_of_all_methods += ['R_caret_classifier_' + i for i in
+#                         ['snn', 'knn', 'bayesglm', 'lssvmRadial', 'rocc', 'ownn', 'ORFpls', 'rFerns', 'treebag', 'RRF', 'svmRadial', 'ctree2', 'evtree', 'pda', 'rpart', 'cforest', 'svmLinear', 'xyf', 'C5.0Tree', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'FH.GBML', 'svmLinear2', 'bstSm', 'LogitBoost', 'wsrf', 'plr', 'xgbLinear', 'rf', 'null', 'protoclass', 'monmlp', 'Rborist', 'mlpWeightDecay', 'svmRadialWeights', 'mlpML', 'ctree', 'loclda', 'sdwd', 'mlpWeightDecayML', 'svmRadialSigma', 'bstTree', 'dnn', 'ordinalRF', 'pda2', 'BstLm', 'RRFglobal', 'mlp', 'rpart1SE', 'pcaNNet', 'ORFsvm', 'parRF', 'rpart2', 'gaussprPoly', 'C5.0Rules', 'rda', 'rbfDDA', 'multinom', 'gaussprLinear', 'svmPoly']]
+# # R_caret_regressor
+# list_of_all_methods += ['R_caret_regressor_' + i for i in
+#                         ['widekernelpls', 'pcr', 'knn', 'bayesglm', 'GFS.FR.MOGUL', 'qrnn', 'treebag', 'rqlasso', 'nnet', 'svmRadial', 'nnls', 'ctree2', 'evtree', 'rpart', 'cforest', 'svmLinear', 'enet', 'FIR.DM', 'xyf', 'HYFIS', 'leapSeq', 'glm', 'glm.nb', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'ppr', 'DENFIS', 'svmLinear2', 'bstSm', 'lm', 'lars2', 'pls', 'rvmRadial', 'xgbLinear', 'simpls', 'rf', 'null', 'monmlp', 'Rborist', 'relaxo', 'GFS.THRIFT', 'mlpWeightDecay', 'randomGLM', 'mlpML', 'ctree', 'brnn', 'mlpWeightDecayML', 'kernelpls', 'krlsRadial', 'spikeslab', 'svmRadialSigma', 'lasso', 'glmnet', 'bstTree', 'dnn', 'icr', 'leapBackward', 'qrf', 'leapForward', 'BstLm', 'ANFIS', 'glmboost', 'mlp', 'rpart1SE', 'lmStepAIC', 'pcaNNet', 'lars', 'glmStepAIC', 'rpart2', 'gaussprPoly', 'ridge', 'FS.HGD', 'rbfDDA', 'gaussprLinear', 'svmPoly', 'penalized']]
+# # rfi_classifier
+# list_of_all_methods += ['rfi_classifier_' + i for i in ['LogisticRegression',
+#                                                         'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
+# # rfi_regressor
+# list_of_all_methods += ['rfi_regressor_' + i for i in ['Ridge', 'LinearRegression',
+#                                                        'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+# # cfi_classifier
+# list_of_all_methods += ['cfi_classifier_' + i for i in ['LogisticRegression',
+#                                                         'SGDClassifier', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier']]
+# # cfi_regressor
+# list_of_all_methods += ['cfi_regressor_' + i for i in ['Ridge', 'LinearRegression',
+#                                                        'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor']]
+# # featurevec_classifier
+# list_of_all_methods += ['featurevec_classifier']
+# # featurevec_regressor
+# list_of_all_methods += ['featurevec_regressor']
+# # R_firm_classifier
+# list_of_all_methods += ['R_firm_classifier_' + i for i in
+#                         ['knn', 'treebag', 'RRF', 'ctree2', 'evtree', 'pda', 'rpart', 'cforest', 'xyf', 'C5.0Tree', 'kknn', 'gaussprRadial', 'LogitBoost', 'wsrf', 'xgbLinear', 'rf', 'null', 'monmlp', 'Rborist', 'mlpWeightDecay', 'mlpML', 'ctree', 'mlpWeightDecayML', 'dnn', 'pda2', 'RRFglobal', 'mlp', 'rpart1SE', 'parRF', 'rpart2', 'gaussprPoly', 'C5.0Rules', 'rbfDDA', 'multinom', 'gaussprLinear']]
+# # R_firm_regressor
+# list_of_all_methods += ['R_firm_regressor_' + i for i in
+#                         ['widekernelpls', 'pcr', 'knn', 'bayesglm', 'GFS.FR.MOGUL', 'qrnn', 'treebag', 'rqlasso', 'nnet', 'svmRadial', 'nnls', 'ctree2', 'evtree', 'rpart', 'cforest', 'svmLinear', 'enet', 'FIR.DM', 'xyf', 'HYFIS', 'leapSeq', 'glm', 'glm.nb', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'ppr', 'DENFIS', 'svmLinear2', 'bstSm', 'lm', 'lars2', 'pls', 'rvmRadial', 'xgbLinear', 'simpls', 'rf', 'null', 'monmlp', 'Rborist', 'relaxo', 'GFS.THRIFT', 'mlpWeightDecay', 'randomGLM', 'mlpML', 'ctree', 'brnn', 'mlpWeightDecayML', 'kernelpls', 'krlsRadial', 'spikeslab', 'svmRadialSigma', 'lasso', 'glmnet', 'bstTree', 'dnn', 'icr', 'leapBackward', 'qrf', 'leapForward', 'BstLm', 'ANFIS', 'glmboost', 'mlp', 'rpart1SE', 'lmStepAIC', 'pcaNNet', 'lars', 'glmStepAIC', 'rpart2', 'gaussprPoly', 'ridge', 'FS.HGD', 'rbfDDA', 'gaussprLinear', 'svmPoly', 'penalized']]
+# # PCA
+# list_of_all_methods += ['PCA_sum']
+# # PCA_weighted
+# list_of_all_methods += ['PCA_weighted']
+# # varimp_classifier
+# list_of_all_methods += ['R_varimp_classifier']
+# # varimp_regressor
+# list_of_all_methods += ['R_varimp_regressor']
+# # pimp_classifier
+# list_of_all_methods += ['R_pimp_classifier']
+# # pimp_regressor
+# list_of_all_methods += ['R_pimp_regressor']
+# # vip_sum_classifier
+# list_of_all_methods += ['R_vip_sum_classifier_' + i for i in ['plsda', 'splsda']]
+# # vip_sum_regressor
+# list_of_all_methods += ['R_vip_sum_regressor_' + i for i in ['pls', 'spls']]
+# # vip_weighted_X_classifier
+# list_of_all_methods += ['R_vip_weighted_X_classifier_' + i for i in ['plsda', 'splsda']]
+# # vip_weighted_X_regressor
+# list_of_all_methods += ['R_vip_weighted_X_regressor_' + i for i in ['pls', 'spls']]
+# # vip_weighted_Y_classifier
+# list_of_all_methods += ['R_vip_weighted_Y_classifier_' + i for i in ['plsda', 'splsda']]
+# # vip_weighted_Y_regressor
+# list_of_all_methods += ['R_vip_weighted_Y_regressor_' + i for i in ['pls', 'spls']]
+# # treeinterpreter_classifier
+# list_of_all_methods += ['treeinterpreter_classifier_' + i for i in ['DecisionTreeClassifier',
+#                                                                     'ExtraTreeClassifier', 'RandomForestClassifier', 'ExtraTreesClassifier', 'ExtraTreeClassifier']]
+# # treeinterpreter_regressor
+# list_of_all_methods += ['treeinterpreter_regressor_' + i for i in ['DecisionTreeRegressor',
+#                                                                    'ExtraTreeRegressor', 'RandomForestRegressor', 'ExtraTreesRegressor', 'ExtraTreeRegressor']]
+# # scipy_stats
+# list_of_all_methods += ['scipy_stats_' + i for i in ['f_oneway', 'alexandergovern', 'pearsonr', 'spearmanr', 'pointbiserialr',
+#                                                      'kendalltau', 'weightedtau', 'somersd', 'linregress', 'siegelslopes', 'theilslopes', 'multiscale_graphcorr']]
+# # booster_classifier (XGBClassifier)
+# list_of_all_methods += ['booster_classifier_' + j + '_' + i for j in ['weight', 'gain', 'cover'] for i in ['XGBClassifier']]
+# # booster_regressor (XGBRegressor, XGBRFRegressor)
+# list_of_all_methods += ['booster_regressor_' + j + '_' + i for j in ['weight', 'gain', 'cover'] for i in ['XGBRegressor', 'XGBRFRegressor']]
+# # TODO uitzoeken of chi2 regression of classification is
+# # sklearn_feature_selection_classifier
+# list_of_all_methods += ['sklearn_feature_selection_classifier_' + i for i in ['chi2', 'f_classif', 'mutual_info_classif']]
+# # sklearn_feature_selection_regressor
+# list_of_all_methods += ['sklearn_feature_selection_regressor_' + i for i in ['chi2', 'f_regression', 'r_regression', 'mutual_info_regression']]
+# # R_FSinR_classifier
+# list_of_all_methods += ['R_FSinR_classifier_' + i for i in ['binaryConsistency', 'chiSquared', 'cramer', 'gainRatio', 'giniIndex',
+#                                                             'IEConsistency', 'IEPConsistency', 'mutualInformation',  'roughsetConsistency', 'ReliefFeatureSetMeasure', 'symmetricalUncertain']]
+# # R_FSinR_regressor
+# list_of_all_methods += ['R_FSinR_regressor_' + i for i in ['binaryConsistency', 'chiSquared', 'cramer', 'gainRatio', 'giniIndex',
+#                                                            'IEConsistency', 'IEPConsistency', 'mutualInformation',  'roughsetConsistency', 'ReliefFeatureSetMeasure', 'symmetricalUncertain']]
+# # sage_classifier
+# list_of_all_methods += ['sage_classifier_' + j + '_' + i for j in ['IteratedEstimator', 'PermutationEstimator', 'KernelEstimator', 'SignEstimator']
+#                         for i in ['LogisticRegression', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier', 'CatBoostClassifier', 'LGBMClassifier']]
+# # runs too slow
+# list_of_all_methods.remove('sage_classifier_PermutationEstimator_LogisticRegression')
+# # sage_regressor
+# list_of_all_methods += ['sage_regressor_' + j + '_' + i for j in ['IteratedEstimator', 'PermutationEstimator', 'KernelEstimator', 'SignEstimator'] for i in [
+#     'Ridge', 'LinearRegression', 'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor', 'CatBoostRegressor', 'LGBMRegressor']]
+# # TODO! UItzoeken welke modellen hier allemaal bij kunnen. Het moet in ieder geval een predict functie hebben
+# # QII_averaged_classifier
+# list_of_all_methods += ['QII_averaged_classifier_' + j + '_' + i for j in ['shapley', 'banzhaf']
+#                         for i in ['LogisticRegression', 'MLPClassifier', 'XGBClassifier', 'XGBRFClassifier', 'CatBoostClassifier', 'LGBMClassifier']]
+# # QII_averaged_regressor
+# list_of_all_methods += ['QII_averaged_regressor_' + j + '_' + i for j in ['shapley', 'banzhaf'] for i in ['Ridge', 'LinearRegression',
+#                                                                                                           'Lasso', 'SGDRegressor', 'MLPRegressor', 'XGBRegressor', 'XGBRFRegressor', 'SymbolicRegressor', 'CatBoostRegressor', 'LGBMRegressor']]
+# # sunnies
+# list_of_all_methods += ['sunnies_' + i for i in ['R2', 'DC', 'BCDC', 'AIDC', 'HSIC']]
+# # rebelosa_classifier
+# list_of_all_methods += ['rebelosa_classifier_' + i for i in ['RF', 'Garson_NN1', 'Garson_NN2', 'VIANN_NN1', 'VIANN_NN2', 'LOFO_NN1', 'LOFO_NN2']]
+# # rebelosa_regressor
+# list_of_all_methods += ['rebelosa_regressor_' + i for i in ['RF', 'Garson_NN1', 'Garson_NN2', 'VIANN_NN1', 'VIANN_NN2', 'LOFO_NN1', 'LOFO_NN2']]
+# # relief_classifier
+# list_of_all_methods += ['relief_classifier_' + i for i in ['Relief', 'ReliefF', 'RReliefF']]
+# # relief_regressor
+# list_of_all_methods += ['relief_regressor_' + i for i in ['Relief', 'ReliefF', 'RReliefF']]
+# # DIFFI
+# list_of_all_methods += ['DIFFI']
+# # ITMO
+# list_of_all_methods += ['ITMO_' + i for i in ["fit_criterion_measure", "f_ratio_measure", "gini_index", "su_measure", "spearman_corr", "pearson_corr", "fechner_corr", "kendall_corr", "chi2_measure", "anova", "laplacian_score",
+#                                               "information_gain", "modified_t_score"] + ["MIM", "MRMR", "JMI", "CIFE", "CMIM", "ICAP", "DCSF", "CFR", "MRI", "IWFS"] + ['NDFS', 'RFS', 'SPEC', 'MCFS', 'UDFS']]
+
+# %%
+# # runs too slow
+# list_of_all_methods.remove('sage_classifier_PermutationEstimator_LogisticRegression')
+# # removed due to time constraints:
+# for i in ['sage_classifier_PermutationEstimator_MLPClassifier',
+#           'sage_classifier_PermutationEstimator_XGBClassifier',
+#           'sage_classifier_PermutationEstimator_LGBMClassifier',
+#           'sage_classifier_KernelEstimator_XGBRFClassifier',
+#           'sage_classifier_KernelEstimator_CatBoostClassifier',
+#           'sage_classifier_KernelEstimator_LGBMClassifier']:
+#     list_of_all_methods.remove(i)
 
 # %%
 
@@ -986,7 +1397,7 @@ def initialize_experiment_variables(name, X, Y, labelencoded_Y):
         kwargs['stopping_strategy'] = 20000
         kwargs['sequence_strategy'] = 'exhaustive'
         kwargs['epsilon'] = 0.0
-        kwargs['limit_n_variables'] = 10
+        kwargs['limit_n_variables'] = 1000
         kwargs['binning_indices'] = None
         kwargs['binning_strategy'] = 'auto'
         kwargs['midway_binning'] = False
@@ -1695,162 +2106,194 @@ def determine_fi(fi_method_name, data_path, **kwargs):
 #     result_dict[name] = result
 # %%
 # %%
-data_name = 'binary_system_200'
+# data_name = 'binary_system_20'
+# np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
+# result_dict = {}
+# time_dict = {}
+# X, Y, labelencoded_Y, onehotencoded_Y, dataset = load_dataset(data_path=f'datasets/{data_name}.pickle')
+# %%
+# did_not_work = []
+# not_finished_in_time = []
+
+# # with open('results/decimal_system_2000.pickle', 'rb') as f:
+# #     loaded = pickle.load(f)
+
+# # test_methods = loaded[-1][10:20]
+# test_methods = list_of_all_methods
+# # test_methods = [i for i in list_of_all_methods if 'R_caret' in i][80:]
+
+# # test_methods = ['bp_feature_importance',
+# #     'sage_classifier_PermutationEstimator_MLPClassifier',
+# #  'sage_classifier_PermutationEstimator_XGBClassifier',
+# #  'sage_classifier_PermutationEstimator_LGBMClassifier',
+# #  'sage_classifier_KernelEstimator_XGBRFClassifier',
+# #  'sage_classifier_KernelEstimator_LGBMClassifier']
+# # test_methods = list_of_all_methods[-50:]
+
+
+# # for name in test_methods:
+# #     kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
+
+# #     print('\033[94m')
+# #     try:
+# #         result = determine_fi(fi_method_name=fi_method_name, data_path='datasets/decimal_system.pickle', **kwargs)
+# #         print("{} gives fi: {}".format(name, result))
+# #         result_dict[name] = result
+# #         assert len(result) == X.shape[1]
+# #         print('\033[92m', name)
+# #         time.sleep(0.1)
+# #     except:
+# #         did_not_work += [name]
+# #         print('\033[91m', name)
+# #         time.sleep(0.1)
+# # %%
+# # time_limit = 60*60
+# time_limit = 10
+
+# os.makedirs(f'results/{data_name}', exist_ok=True)
+
+# counter_save = -1
+# for name in tqdm(test_methods):
+#     counter_save += 1
+#     with open(f'results/{data_name}/results_after_{counter_save}.pickle', 'wb') as f:
+#         pickle.dump([result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
+
+#     with suppress_stdout():
+#         kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
+
+#         print('\033[94m')
+#         try:
+#             start_time = time.time()
+
+#             result = func_timeout.func_timeout(timeout=time_limit, func=determine_fi, kwargs=kwargs | {
+#                                                'fi_method_name': fi_method_name, 'data_path': f'datasets/{data_name}.pickle'})
+
+#             end_time = time.time()
+#             print("{} gives fi: {}".format(name, result))
+#             result_dict[name] = result
+#             time_dict[name] = end_time - start_time
+#             assert len(result) == X.shape[1]
+#             print('\033[92m', name)
+#             time.sleep(0.1)
+#         except func_timeout.FunctionTimedOut:
+#             not_finished_in_time += [name]
+#             result_dict[name] = np.array([np.nan] * X.shape[1])
+#             time_dict[name] = '>{}'.format(time_limit)
+#             print('\033[93m', name)
+#             time.sleep(0.1)
+#         except:
+#             did_not_work += [name]
+#             print('\033[91m', name)
+#             time.sleep(0.1)
+
+
+# with open(f'results/{data_name}-{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.pickle', 'wb') as f:
+#     pickle.dump([X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
+# try:
+#     shutil.rmtree(f'results/{data_name}')
+# except:
+#     None
+
+
+# %%
+
+data_paths = [
+f"datasets/{experiment_name}/independent_easy_{n_observations}.pickle",
+f"datasets/{experiment_name}/independent_hard_{n_observations}.pickle",
+f"datasets/{experiment_name}/decimal_system_{n_observations}.pickle",
+f"datasets/{experiment_name}/cloned_decimal_system_{n_observations}.pickle",
+f"datasets/{experiment_name}/binary_system_{n_observations}.pickle",
+f"datasets/{experiment_name}/decimal_system_with_independence_{n_observations}.pickle",
+f"datasets/{experiment_name}/prob_selected_025_{n_observations}.pickle",
+f"datasets/{experiment_name}/max_function_equal_dist_{n_observations}.pickle",
+f"datasets/{experiment_name}/min_function_equal_dist_{n_observations}.pickle",
+f"datasets/{experiment_name}/max_function_increasing_dist_3_{n_observations}.pickle",
+f"datasets/{experiment_name}/min_function_increasing_dist_3_{n_observations}.pickle",
+f"datasets/{experiment_name}/max_function_expanding_dist_3_{n_observations}.pickle",
+f"datasets/{experiment_name}/min_function_expanding_dist_3_{n_observations}.pickle",
+f"datasets/{experiment_name}/pairwise_combined_max_{n_observations}.pickle",
+f"datasets/{experiment_name}/pairwise_combined_min.pickle",
+f"datasets/{experiment_name}/prob_selected_033_{n_observations}.pickle",
+f"datasets/{experiment_name}/prob_selected_02_{n_observations}.pickle",
+f"datasets/{experiment_name}/max_function_increasing_dist_4_{n_observations}.pickle",
+f"datasets/{experiment_name}/min_function_increasing_dist_4_{n_observations}.pickle",
+f"datasets/{experiment_name}/max_function_expanding_dist_4_{n_observations}.pickle",
+f"datasets/{experiment_name}/min_function_expanding_dist_4_{n_observations}.pickle",
+f"datasets/{experiment_name}/max_function_increasing_dist_5_{n_observations}.pickle",
+f"datasets/{experiment_name}/min_function_increasing_dist_5_{n_observations}.pickle",
+f"datasets/{experiment_name}/max_function_expanding_dist_5_{n_observations}.pickle",
+f"datasets/{experiment_name}/min_function_expanding_dist_5_{n_observations}.pickle"]
+# %%
 np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
-result_dict = {}
-time_dict = {}
-X, Y, labelencoded_Y, onehotencoded_Y, dataset = load_dataset(data_path=f'datasets/{data_name}.pickle')
-# %%
-did_not_work = []
-not_finished_in_time = []
 
-# with open('results/decimal_system_2000.pickle', 'rb') as f:
-#     loaded = pickle.load(f)
+global_did_not_work = []
+global_did_not_finish = []
 
-# test_methods = loaded[-1][10:20]
 test_methods = list_of_all_methods
-# test_methods = [i for i in list_of_all_methods if 'R_caret' in i][80:]
-
-# test_methods = ['bp_feature_importance',
-#     'sage_classifier_PermutationEstimator_MLPClassifier',
-#  'sage_classifier_PermutationEstimator_XGBClassifier',
-#  'sage_classifier_PermutationEstimator_LGBMClassifier',
-#  'sage_classifier_KernelEstimator_XGBRFClassifier',
-#  'sage_classifier_KernelEstimator_LGBMClassifier']
-# test_methods = list_of_all_methods[-50:]
 
 
-# for name in test_methods:
-#     kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
-
-#     print('\033[94m')
-#     try:
-#         result = determine_fi(fi_method_name=fi_method_name, data_path='datasets/decimal_system.pickle', **kwargs)
-#         print("{} gives fi: {}".format(name, result))
-#         result_dict[name] = result
-#         assert len(result) == X.shape[1]
-#         print('\033[92m', name)
-#         time.sleep(0.1)
-#     except:
-#         did_not_work += [name]
-#         print('\033[91m', name)
-#         time.sleep(0.1)
-# %%
+# time_limit = 60*60
 time_limit = 60*60
 
-os.makedirs(f'results/{data_name}', exist_ok=True)
-
-counter_save = -1
-for name in tqdm(test_methods):
-    counter_save += 1
-    with open(f'results/{data_name}/results_after_{counter_save}.pickle', 'wb') as f:
-        pickle.dump([result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
-
-    with suppress_stdout():
-        kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
-
-        print('\033[94m')
-        try:
-            start_time = time.time()
-
-            result = func_timeout.func_timeout(timeout=time_limit, func=determine_fi, kwargs=kwargs | {
-                                               'fi_method_name': fi_method_name, 'data_path': f'datasets/{data_name}.pickle'})
-
-            end_time = time.time()
-            print("{} gives fi: {}".format(name, result))
-            result_dict[name] = result
-            time_dict[name] = end_time - start_time
-            assert len(result) == X.shape[1]
-            print('\033[92m', name)
-            time.sleep(0.1)
-        except func_timeout.FunctionTimedOut:
-            not_finished_in_time += [name]
-            result_dict[name] = np.array([np.nan] * X.shape[1])
-            time_dict[name] = '>{}'.format(time_limit)
-            print('\033[93m', name)
-            time.sleep(0.1)
-        except:
-            did_not_work += [name]
-            print('\033[91m', name)
-            time.sleep(0.1)
+for data_path in tqdm(data_paths):
+    data_name = os.path.splitext(os.path.basename(data_path))[0]
+    experiment_name = str.split(data_path, '/')[1]
+    X, Y, labelencoded_Y, onehotencoded_Y, dataset = load_dataset(data_path=f'datasets/{experiment_name}/{data_name}.pickle')
+    os.makedirs(f'results/{experiment_name}/{data_name}', exist_ok=True)
 
 
-with open(f'results/{data_name}-{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.pickle', 'wb') as f:
-    pickle.dump([X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
-try:
-    shutil.rmtree(f'results/{data_name}')
-except:
-    None
+    did_not_work = []
+    not_finished_in_time = []
+    result_dict = {}
+    time_dict = {}
+
+    counter_save = -1
+    for name in tqdm(test_methods):
+        counter_save += 1
+        with open(f'results/{experiment_name}/{data_name}/results_after_{counter_save}.pickle', 'wb') as f:
+            pickle.dump([result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
+
+        with suppress_stdout():
+            kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
+
+            print('\033[94m')
+            try:
+                start_time = time.time()
+
+                result = func_timeout.func_timeout(timeout=time_limit, func=determine_fi, kwargs=kwargs | {
+                                                'fi_method_name': fi_method_name, 'data_path': f'datasets/{experiment_name}/{data_name}.pickle'})
+
+                end_time = time.time()
+                print("{} gives fi: {}".format(name, result))
+                result_dict[name] = result
+                time_dict[name] = end_time - start_time
+                assert len(result) == X.shape[1]
+                print('\033[92m', name)
+                time.sleep(0.1)
+            except func_timeout.FunctionTimedOut:
+                not_finished_in_time += [name]
+                global_did_not_finish += [name]
+                result_dict[name] = np.array([np.nan] * X.shape[1])
+                time_dict[name] = '>{}'.format(time_limit)
+                print('\033[93m', name)
+                time.sleep(0.1)
+            except:
+                did_not_work += [name]
+                print('\033[91m', name)
+                time.sleep(0.1)
 
 
-# %%
-# name = test_methods[80]
-# kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
-# result = determine_fi(fi_method_name=fi_method_name, data_path='datasets/decimal_system_200.pickle', **kwargs)
-# print(len(result))
-# %%
-
-
-# %%
-# import numpy as np
-# kwargs = {'n_observations': 200}
-# X_1 = np.random.randint(10, size=kwargs['n_observations'])
-# X_2 = np.random.randint(10, size=kwargs['n_observations'])
-# X_3 = np.random.randint(10, size=kwargs['n_observations'])
-# Y = X_1 + 10 * X_2 + 100 * X_3
-# X = np.stack((X_1, X_2, X_3), axis=1)
-# dataset = np.stack((X_1, X_2, X_3, Y), axis=1)
+    with open(f'results/{experiment_name}/{data_name}-{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.pickle', 'wb') as f:
+        pickle.dump([X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
+    try:
+        shutil.rmtree(f'results/{experiment_name}/{data_name}')
+    except:
+        None
+        
+    # remove methods that did not work or were not finished on time:
+    for remove_method in not_finished_in_time + did_not_work:
+        test_methods.remove(remove_method)
 # %%
 
-
-# for test in ["fit_criterion_measure", "f_ratio_measure", "gini_index", "su_measure", "spearman_corr", "pearson_corr", "fechner_corr", "kendall_corr", "chi2_measure", "anova", "laplacian_score",
-# "information_gain", "modified_t_score"]:
-#     print(eval('ITMO.'+ test)(X,Y))
-
-# # %%
-
-# for test in ["MIM", "MRMR", "JMI", "CIFE", "CMIM", "ICAP", "DCSF", "CFR", "MRI", "IWFS"]:
-#     print(eval('ITMO.'+test)(np.array([]), free_features= range(X.shape[1]), x= X, y= Y))
-
-
-#  # %%
-# for test in ['NDFS', 'RFS', 'SPEC', 'MCFS', 'UDFS']:
-#     print(eval('ITMO.'+ test)(X.shape[1]).fit(X,Y).feature_scores_)
-# # %%
-
-# # %%
-# for name, result in result_dict.items():
-#     result = np.array(result)
-#     if result.shape != (3,):
-#         print(name)
-# %%
-# with open('results/decimal_system_2000.pickle', 'wb') as f:
-#     pickle.dump([X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
-# %%
-# with open('results/decimal_system_200.pickle', 'rb') as f:
-#     [X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods] = pickle.load(f)
-# %%
-# not_finished_in_time
-# # %%
-# sum = 0
-# for name, time in time_dict.items():
-#     if name not in not_finished_in_time:
-#         sum+=time
-# # %%
-# a = pd.DataFrame(time_dict, index = [0])
-# b = a.transpose()
-# c = b[b[0].apply(lambda x: isinstance(x, float))]
-# d = c.sort_values(by= 0, ascending = False)
-# d
-# # %%
-# d[:].sum()
-# # %%
-# d[100:].index.values
-# # %%
-# sum = 0
-# for i in b[0]:
-#     if isinstance(i, float):
-#         sum += i
-# %%
 
 # %%
