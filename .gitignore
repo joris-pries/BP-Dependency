@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+src/bp_feature_importance/datasets/*.pickle
+src/bp_feature_importance/results/**/**/*.pickle

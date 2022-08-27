@@ -1,5 +1,8 @@
 # %%
+from method_lists import FAST_LIST, ALL_CLASSIFICATION
+import pywhatkit
 from dataclasses import replace
+from importlib.resources import path
 import os
 from contextlib import contextmanager
 from torch import seed
@@ -15,6 +18,7 @@ import numpy as np
 import pandas as pd
 import shap
 from datetime import datetime
+import glob
 import random
 import pickle
 from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor, ExtraTreesClassifier, ExtraTreesRegressor, GradientBoostingClassifier, GradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor, IsolationForest
@@ -142,7 +146,7 @@ def create_dataset(creation, save_path, **kwargs):
         X_1 = np.random.randint(10, size=kwargs['n_observations'])
         X_2 = np.random.randint(10, size=kwargs['n_observations'])
         X_3 = np.random.randint(10, size=kwargs['n_observations'])
-        
+
         Y = X_1 + 10 * X_2 + 100 * X_3
         X = np.stack((X_1, X_2, X_3), axis=1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
@@ -151,7 +155,7 @@ def create_dataset(creation, save_path, **kwargs):
         X_1 = np.random.randint(10, size=kwargs['n_observations'])
         X_2 = np.random.randint(10, size=kwargs['n_observations'])
         X_3 = np.random.randint(10, size=kwargs['n_observations'])
-        
+
         Y = X_1 + 10 * X_2 + 100 * X_3
         X = np.stack((X_1, X_1, X_2, X_2, X_3, X_3), axis=1) #! Here is the difference
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
@@ -187,13 +191,14 @@ def create_dataset(creation, save_path, **kwargs):
 
 
     if creation == 'independent_easy':
-        I_1 = np.random.randint(100, size=kwargs['n_observations'])
-        I_2 = np.random.randint(100, size=kwargs['n_observations'])
-        I_3 = np.random.randint(100, size=kwargs['n_observations'])
-        I_4 = np.random.randint(100, size=kwargs['n_observations'])
-        I_5 = np.random.randint(100, size=kwargs['n_observations'])
+        K = 10
+        I_1 = np.random.randint(K, size=kwargs['n_observations'])
+        I_2 = np.random.randint(K, size=kwargs['n_observations'])
+        I_3 = np.random.randint(K, size=kwargs['n_observations'])
+        I_4 = np.random.randint(K, size=kwargs['n_observations'])
+        I_5 = np.random.randint(K, size=kwargs['n_observations'])
 
-        Y = np.random.randint(100, size=kwargs['n_observations'])
+        Y = np.random.randint(K, size=kwargs['n_observations'])
         X = np.stack((I_1, I_2, I_3,I_4,I_5), axis=1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
 
@@ -207,19 +212,19 @@ def create_dataset(creation, save_path, **kwargs):
         Y = np.random.randint(2, size=kwargs['n_observations'])
         X = np.stack((I_1, I_2, I_3,I_4,I_5), axis=1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
-        
+
     if creation == 'max_function_equal_dist':
-        K = 100
+        K = 10
         X_1 = np.random.randint(K, size=kwargs['n_observations'])
         X_2 = np.random.randint(K, size=kwargs['n_observations'])
         X_3 = np.random.randint(K, size=kwargs['n_observations'])
 
         X = np.stack((X_1, X_2, X_3), axis=1)
         Y = np.max(X, axis = 1)
-        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)       
-        
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+
     if creation == 'max_function_increasing_dist_3':
-        K = 100
+        K = 10
         X_1 = np.random.randint(K, size=kwargs['n_observations'])
         X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
@@ -227,33 +232,33 @@ def create_dataset(creation, save_path, **kwargs):
         X = np.stack((X_1, X_2, X_3), axis=1)
         Y = np.max(X, axis = 1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
-        
+
     if creation == 'max_function_increasing_dist_4':
-        K = 100
+        K = 10
         X_1 = np.random.randint(K, size=kwargs['n_observations'])
         X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
         X_4 = np.random.randint(4 * K, size=kwargs['n_observations'])
-        
+
         X = np.stack((X_1, X_2, X_3, X_4), axis=1)
         Y = np.max(X, axis = 1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
-        
+
     if creation == 'max_function_increasing_dist_5':
-        K = 100
+        K = 10
         X_1 = np.random.randint(K, size=kwargs['n_observations'])
         X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
         X_4 = np.random.randint(4 * K, size=kwargs['n_observations'])
         X_5 = np.random.randint(5 * K, size=kwargs['n_observations'])
-        
+
         X = np.stack((X_1, X_2, X_3, X_4, X_5), axis=1)
         Y = np.max(X, axis = 1)
-        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)                 
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
 
 
     if creation == 'max_function_expanding_dist_3':
-        K = 100
+        K = 10
         X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
         X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
@@ -261,42 +266,42 @@ def create_dataset(creation, save_path, **kwargs):
         X = np.stack((X_1, X_2, X_3), axis=1)
         Y = np.max(X, axis = 1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
-        
+
     if creation == 'max_function_expanding_dist_4':
-        K = 100
+        K = 10
         X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
         X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
         X_4 = np.random.randint((-4 * K) + 1, 4 * K, size=kwargs['n_observations'])
-        
+
         X = np.stack((X_1, X_2, X_3, X_4), axis=1)
         Y = np.max(X, axis = 1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
-        
+
     if creation == 'max_function_expanding_dist_5':
-        K = 100
+        K = 10
         X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
         X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
         X_4 = np.random.randint((-4 * K) + 1, 4 * K, size=kwargs['n_observations'])
         X_5 = np.random.randint((-5 * K) + 1, 5 * K, size=kwargs['n_observations'])
-        
+
         X = np.stack((X_1, X_2, X_3, X_4, X_5), axis=1)
         Y = np.max(X, axis = 1)
-        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)   
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
 
     if creation == 'min_function_equal_dist':
-        K = 100
+        K = 10
         X_1 = np.random.randint(K, size=kwargs['n_observations'])
         X_2 = np.random.randint(K, size=kwargs['n_observations'])
         X_3 = np.random.randint(K, size=kwargs['n_observations'])
 
         X = np.stack((X_1, X_2, X_3), axis=1)
         Y = np.min(X, axis = 1)
-        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)    
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
 
     if creation == 'min_function_increasing_dist_3':
-        K = 100
+        K = 10
         X_1 = np.random.randint(K, size=kwargs['n_observations'])
         X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
@@ -304,33 +309,33 @@ def create_dataset(creation, save_path, **kwargs):
         X = np.stack((X_1, X_2, X_3), axis=1)
         Y = np.min(X, axis = 1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
-        
+
     if creation == 'min_function_increasing_dist_4':
-        K = 100
+        K = 10
         X_1 = np.random.randint(K, size=kwargs['n_observations'])
         X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
         X_4 = np.random.randint(4 * K, size=kwargs['n_observations'])
-        
+
         X = np.stack((X_1, X_2, X_3, X_4), axis=1)
         Y = np.min(X, axis = 1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
-        
+
     if creation == 'min_function_increasing_dist_5':
-        K = 100
+        K = 10
         X_1 = np.random.randint(K, size=kwargs['n_observations'])
         X_2 = np.random.randint(2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint(3 * K, size=kwargs['n_observations'])
         X_4 = np.random.randint(4 * K, size=kwargs['n_observations'])
         X_5 = np.random.randint(5 * K, size=kwargs['n_observations'])
-        
+
         X = np.stack((X_1, X_2, X_3, X_4, X_5), axis=1)
         Y = np.min(X, axis = 1)
-        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)                 
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
 
 
     if creation == 'min_function_expanding_dist_3':
-        K = 100
+        K = 10
         X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
         X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
@@ -338,78 +343,78 @@ def create_dataset(creation, save_path, **kwargs):
         X = np.stack((X_1, X_2, X_3), axis=1)
         Y = np.min(X, axis = 1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
-        
+
     if creation == 'min_function_expanding_dist_4':
-        K = 100
+        K = 10
         X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
         X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
         X_4 = np.random.randint((-4 * K) + 1, 4 * K, size=kwargs['n_observations'])
-        
+
         X = np.stack((X_1, X_2, X_3, X_4), axis=1)
         Y = np.min(X, axis = 1)
         dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
-        
+
     if creation == 'min_function_expanding_dist_5':
-        K = 100
+        K = 10
         X_1 = np.random.randint((-1 * K) + 1, K, size=kwargs['n_observations'])
         X_2 = np.random.randint((-2 * K) + 1, 2 * K, size=kwargs['n_observations'])
         X_3 = np.random.randint((-3 * K) + 1, 3 * K, size=kwargs['n_observations'])
         X_4 = np.random.randint((-4 * K) + 1, 4 * K, size=kwargs['n_observations'])
         X_5 = np.random.randint((-5 * K) + 1, 5 * K, size=kwargs['n_observations'])
-        
+
         X = np.stack((X_1, X_2, X_3, X_4, X_5), axis=1)
         Y = np.min(X, axis = 1)
-        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)   
-        
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+
     if creation == 'pairwise_combined_max':
-        K = 100
+        K = 10
         X_1 = np.random.randint(K, size=kwargs['n_observations'])
         X_2 = np.random.randint(K, size=kwargs['n_observations'])
         X_3 = np.random.randint(K, size=kwargs['n_observations'])
         Z_12 = np.max(np.stack((X_1, X_2), axis = 1), axis = 1)
         Z_13 = np.max(np.stack((X_1, X_3), axis = 1), axis = 1)
         Z_23 = np.max(np.stack((X_2, X_3), axis = 1), axis = 1)
-        
+
         X = np.stack((X_1, X_2, X_3, Z_12, Z_13, Z_23), axis=1)
         Y = np.max(X, axis = 1)
-        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)           
-        
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
+
     if creation == 'pairwise_combined_min':
-        K = 100
+        K = 10
         X_1 = np.random.randint(K, size=kwargs['n_observations'])
         X_2 = np.random.randint(K, size=kwargs['n_observations'])
         X_3 = np.random.randint(K, size=kwargs['n_observations'])
         Z_12 = np.min(np.stack((X_1, X_2), axis = 1), axis = 1)
         Z_13 = np.min(np.stack((X_1, X_3), axis = 1), axis = 1)
         Z_23 = np.min(np.stack((X_2, X_3), axis = 1), axis = 1)
-        
+
         X = np.stack((X_1, X_2, X_3, Z_12, Z_13, Z_23), axis=1)
         Y = np.min(X, axis = 1)
-        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)   
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
 
     if creation == 'prob_selected':
         w = kwargs['prob_1']
         X_1 = np.random.randint(2, size=kwargs['n_observations'])
         X_2 = np.random.randint(2, size=kwargs['n_observations'])
         S =  np.random.choice([0,1], size=kwargs['n_observations'], replace= True, p= [w, 1-w])
-        
+
         Y = np.array([[X_1[i], X_2[i]][S[i]] for i in range(kwargs['n_observations'])])
-        
+
         def help_function(x, s):
-            if x ==0 & s == 0:
+            if x ==0 and s == 0:
                 return 0
-            if x == 0 & s == 1:
+            if x == 0 and s == 1:
                 return 1
-            if x == 1 & s == 0:
+            if x == 1 and s == 0:
                 return 2
-            if x == 1 & s == 1:
-                return 3      
+            if x == 1 and s == 1:
+                return 3
         X_1_with_S = np.array([help_function(X_1[i], S[i]) for i in range(kwargs['n_observations'])])
         X_2_with_S = np.array([help_function(X_2[i], S[i]) for i in range(kwargs['n_observations'])])
-        
+
         X = np.stack((X_1_with_S, X_2_with_S), axis=1)
-        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)   
+        dataset = np.append(X, np.expand_dims(Y, axis = 1), axis = 1)
 
     # if creation == 'max_uniform_increasing':
     #     # X_1 = np.random.uniform(low = 0, high= 1, size= kwargs['n_observations'])
@@ -449,36 +454,37 @@ def create_dataset(creation, save_path, **kwargs):
 # create_dataset('binary_system', 'datasets/binary_system_20.pickle', n_observations=200)
 # create_dataset('max_uniform_increasing', 'datasets/max_uniform_increasing_20000000.pickle', n_observations=20000000)
 # datasets created for experiments
-experiment_name = 'experiment_2'
-n_observations = 200
-# np.random.seed(1)
+experiment_name = 'experiment_10'
+# n_observations = 2000
+np.random.seed(1)
 # os.makedirs(f'datasets/{experiment_name}', exist_ok=True)
 # create_datasets_dict = {
-#     1: f'create_dataset("independent_easy", "datasets/{experiment_name}/independent_easy_{n_observations}.pickle", n_observations = {n_observations})',
-#     2: f'create_dataset("independent_hard", "datasets/{experiment_name}/independent_hard_{n_observations}.pickle", n_observations = {n_observations})',
-#     3: f'create_dataset("decimal_system", "datasets/{experiment_name}/decimal_system_{n_observations}.pickle", n_observations = {n_observations})',
-#     4: f'create_dataset("cloned_decimal_system", "datasets/{experiment_name}/cloned_decimal_system_{n_observations}.pickle", n_observations = {n_observations})',
-#     5: f'create_dataset("binary_system", "datasets/{experiment_name}/binary_system_{n_observations}.pickle", n_observations = {n_observations})',
-#     6: f'create_dataset("decimal_system_with_independence", "datasets/{experiment_name}/decimal_system_with_independence_{n_observations}.pickle", n_observations = {n_observations})',
-#     7: f'create_dataset("prob_selected", "datasets/{experiment_name}/prob_selected_025_{n_observations}.pickle", n_observations = {n_observations}, prob_1 = 1/4)',
-#     8: f'create_dataset("max_function_equal_dist", "datasets/{experiment_name}/max_function_equal_dist_{n_observations}.pickle", n_observations = {n_observations})',
-#     9: f'create_dataset("min_function_equal_dist", "datasets/{experiment_name}/min_function_equal_dist_{n_observations}.pickle", n_observations = {n_observations})',
-#     10: f'create_dataset("max_function_increasing_dist_3", "datasets/{experiment_name}/max_function_increasing_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
-#     11: f'create_dataset("min_function_increasing_dist_3", "datasets/{experiment_name}/min_function_increasing_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
-#     12: f'create_dataset("max_function_expanding_dist_3", "datasets/{experiment_name}/max_function_expanding_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
-#     13: f'create_dataset("min_function_expanding_dist_3", "datasets/{experiment_name}/min_function_expanding_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
-#     14: f'create_dataset("pairwise_combined_max", "datasets/{experiment_name}/pairwise_combined_max_{n_observations}.pickle", n_observations = {n_observations})',
-#     15: f'create_dataset("pairwise_combined_min", "datasets/{experiment_name}/pairwise_combined_min.pickle", n_observations = {n_observations})',
-#     16: f'create_dataset("prob_selected", "datasets/{experiment_name}/prob_selected_033_{n_observations}.pickle", n_observations = {n_observations}, prob_1 = 1/3)',
-#     17: f'create_dataset("prob_selected", "datasets/{experiment_name}/prob_selected_02_{n_observations}.pickle", n_observations = {n_observations}, prob_1 = 1/5)',
-#     18: f'create_dataset("max_function_increasing_dist_4", "datasets/{experiment_name}/max_function_increasing_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
-#     19: f'create_dataset("min_function_increasing_dist_4", "datasets/{experiment_name}/min_function_increasing_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
-#     20: f'create_dataset("max_function_expanding_dist_4", "datasets/{experiment_name}/max_function_expanding_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
-#     21: f'create_dataset("min_function_expanding_dist_4", "datasets/{experiment_name}/min_function_expanding_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
-#     22: f'create_dataset("max_function_increasing_dist_5", "datasets/{experiment_name}/max_function_increasing_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
-#     23: f'create_dataset("min_function_increasing_dist_5", "datasets/{experiment_name}/min_function_increasing_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
-#     24: f'create_dataset("max_function_expanding_dist_5", "datasets/{experiment_name}/max_function_expanding_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
-#     25: f'create_dataset("min_function_expanding_dist_5", "datasets/{experiment_name}/min_function_expanding_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 1: f'create_dataset("independent_easy", "datasets/{experiment_name}/independent_easy_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 2: f'create_dataset("independent_hard", "datasets/{experiment_name}/independent_hard_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 3: f'create_dataset("decimal_system", "datasets/{experiment_name}/decimal_system_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 4: f'create_dataset("cloned_decimal_system", "datasets/{experiment_name}/cloned_decimal_system_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 5: f'create_dataset("binary_system", "datasets/{experiment_name}/binary_system_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 6: f'create_dataset("decimal_system_with_independence", "datasets/{experiment_name}/decimal_system_with_independence_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 7: f'create_dataset("prob_selected", "datasets/{experiment_name}/prob_selected_025_{n_observations}.pickle", n_observations = {n_observations}, prob_1 = 1/4)',
+#     # 8: f'create_dataset("max_function_equal_dist", "datasets/{experiment_name}/max_function_equal_dist_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 9: f'create_dataset("min_function_equal_dist", "datasets/{experiment_name}/min_function_equal_dist_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 10: f'create_dataset("max_function_increasing_dist_3", "datasets/{experiment_name}/max_function_increasing_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 11: f'create_dataset("min_function_increasing_dist_3", "datasets/{experiment_name}/min_function_increasing_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 12: f'create_dataset("max_function_expanding_dist_3", "datasets/{experiment_name}/max_function_expanding_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 13: f'create_dataset("min_function_expanding_dist_3", "datasets/{experiment_name}/min_function_expanding_dist_3_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 14: f'create_dataset("pairwise_combined_max", "datasets/{experiment_name}/pairwise_combined_max_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 15: f'create_dataset("pairwise_combined_min", "datasets/{experiment_name}/pairwise_combined_min_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 16: f'create_dataset("prob_selected", "datasets/{experiment_name}/prob_selected_033_{n_observations}.pickle", n_observations = {n_observations}, prob_1 = 1/3)',
+#     # 17: f'create_dataset("prob_selected", "datasets/{experiment_name}/prob_selected_02_{n_observations}.pickle", n_observations = {n_observations}, prob_1 = 1/5)',
+#     # 18: f'create_dataset("max_function_increasing_dist_4", "datasets/{experiment_name}/max_function_increasing_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 19: f'create_dataset("min_function_increasing_dist_4", "datasets/{experiment_name}/min_function_increasing_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 20: f'create_dataset("max_function_expanding_dist_4", "datasets/{experiment_name}/max_function_expanding_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 21: f'create_dataset("min_function_expanding_dist_4", "datasets/{experiment_name}/min_function_expanding_dist_4_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 22: f'create_dataset("max_function_increasing_dist_5", "datasets/{experiment_name}/max_function_increasing_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 23: f'create_dataset("min_function_increasing_dist_5", "datasets/{experiment_name}/min_function_increasing_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 24: f'create_dataset("max_function_expanding_dist_5", "datasets/{experiment_name}/max_function_expanding_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
+#     # 25: f'create_dataset("min_function_expanding_dist_5", "datasets/{experiment_name}/min_function_expanding_dist_5_{n_observations}.pickle", n_observations = {n_observations})',
+#     26: f'create_dataset("prob_selected", "datasets/{experiment_name}/prob_selected_05_{n_observations}.pickle", n_observations = {n_observations}, prob_1 = 1/2)',
 # }
 # for value in create_datasets_dict.values():
 #     eval(value)
@@ -569,7 +575,7 @@ list_of_all_methods += ['EL_absolute_weights']
 list_of_all_methods += ['Fisher_Score']
 # permutation_importance_classifier
 list_of_all_methods += ['permutation_importance_classifier_' + i for i in standard_classification_models]
-# shap_explainer_tree_classifier 
+# shap_explainer_tree_classifier
 list_of_all_methods += ['shap_explainer_tree_classifier_' + i for i in tree_based_classification_models]
 # shap_explainer_linear_classifier (LogisticRegression, SGDClassifier)
 list_of_all_methods += ['shap_explainer_linear_classifier_' + i for i in ['LogisticRegression', 'SGDClassifier']]
@@ -660,6 +666,8 @@ list_of_all_methods += ['DIFFI']
 list_of_all_methods += ['ITMO_' + i for i in ["fit_criterion_measure", "f_ratio_measure", "gini_index", "su_measure", "spearman_corr", "pearson_corr", "fechner_corr", "kendall_corr", "chi2_measure", "anova", "laplacian_score",
                                               "information_gain", "modified_t_score"] + ["MIM", "MRMR", "JMI", "CIFE", "CMIM", "ICAP", "DCSF", "CFR", "MRI", "IWFS"] + ['NDFS', 'RFS', 'SPEC', 'MCFS', 'UDFS']]
 
+# TODO updaten ooit
+# During experiments, we found that these methods do not work:
 
 # list_of_all_methods = []
 # # List of FI methods:
@@ -2196,51 +2204,103 @@ def determine_fi(fi_method_name, data_path, **kwargs):
 
 
 # %%
-
-data_paths = [
-f"datasets/{experiment_name}/independent_easy_{n_observations}.pickle",
-f"datasets/{experiment_name}/independent_hard_{n_observations}.pickle",
-f"datasets/{experiment_name}/decimal_system_{n_observations}.pickle",
-f"datasets/{experiment_name}/cloned_decimal_system_{n_observations}.pickle",
-f"datasets/{experiment_name}/binary_system_{n_observations}.pickle",
-f"datasets/{experiment_name}/decimal_system_with_independence_{n_observations}.pickle",
-f"datasets/{experiment_name}/prob_selected_025_{n_observations}.pickle",
-f"datasets/{experiment_name}/max_function_equal_dist_{n_observations}.pickle",
-f"datasets/{experiment_name}/min_function_equal_dist_{n_observations}.pickle",
-f"datasets/{experiment_name}/max_function_increasing_dist_3_{n_observations}.pickle",
-f"datasets/{experiment_name}/min_function_increasing_dist_3_{n_observations}.pickle",
-f"datasets/{experiment_name}/max_function_expanding_dist_3_{n_observations}.pickle",
-f"datasets/{experiment_name}/min_function_expanding_dist_3_{n_observations}.pickle",
-f"datasets/{experiment_name}/pairwise_combined_max_{n_observations}.pickle",
-f"datasets/{experiment_name}/pairwise_combined_min.pickle",
-f"datasets/{experiment_name}/prob_selected_033_{n_observations}.pickle",
-f"datasets/{experiment_name}/prob_selected_02_{n_observations}.pickle",
-f"datasets/{experiment_name}/max_function_increasing_dist_4_{n_observations}.pickle",
-f"datasets/{experiment_name}/min_function_increasing_dist_4_{n_observations}.pickle",
-f"datasets/{experiment_name}/max_function_expanding_dist_4_{n_observations}.pickle",
-f"datasets/{experiment_name}/min_function_expanding_dist_4_{n_observations}.pickle",
-f"datasets/{experiment_name}/max_function_increasing_dist_5_{n_observations}.pickle",
-f"datasets/{experiment_name}/min_function_increasing_dist_5_{n_observations}.pickle",
-f"datasets/{experiment_name}/max_function_expanding_dist_5_{n_observations}.pickle",
-f"datasets/{experiment_name}/min_function_expanding_dist_5_{n_observations}.pickle"]
+help_paths = glob.glob( f"datasets/{experiment_name}/*.pickle")
+data_paths = [path.replace('\\', '/') for path in help_paths]
+# data_paths = [os.path.normpath(i) for i in data_paths]
+# directory = f"datasets/{experiment_name}"
+# data_paths = [os.path.join(directory, file) for file in os.listdir(directory)]
+# data_paths = [
+# # f"datasets/{experiment_name}/independent_easy_{n_observations}.pickle",
+# # # f"datasets/{experiment_name}/independent_hard_{n_observations}.pickle",
+# # # f"datasets/{experiment_name}/decimal_system_{n_observations}.pickle",
+# # # f"datasets/{experiment_name}/cloned_decimal_system_{n_observations}.pickle",
+# # # f"datasets/{experiment_name}/binary_system_{n_observations}.pickle",
+# # # f"datasets/{experiment_name}/decimal_system_with_independence_{n_observations}.pickle",
+# # f"datasets/{experiment_name}/prob_selected_025_{n_observations}.pickle",
+# # f"datasets/{experiment_name}/max_function_equal_dist_{n_observations}.pickle",
+# # f"datasets/{experiment_name}/min_function_equal_dist_{n_observations}.pickle",
+# # f"datasets/{experiment_name}/max_function_increasing_dist_3_{n_observations}.pickle",
+# # f"datasets/{experiment_name}/min_function_increasing_dist_3_{n_observations}.pickle",
+# # f"datasets/{experiment_name}/max_function_expanding_dist_3_{n_observations}.pickle",
+# # f"datasets/{experiment_name}/min_function_expanding_dist_3_{n_observations}.pickle",
+# # f"datasets/{experiment_name}/pairwise_combined_max_{n_observations}.pickle",
+# # f"datasets/{experiment_name}/pairwise_combined_min_{n_observations}.pickle",
+# # # f"datasets/{experiment_name}/prob_selected_033_{n_observations}.pickle",
+# # # f"datasets/{experiment_name}/prob_selected_02_{n_observations}.pickle",
+# f"datasets/{experiment_name}/max_function_increasing_dist_4_{n_observations}.pickle",
+# f"datasets/{experiment_name}/min_function_increasing_dist_4_{n_observations}.pickle",
+# f"datasets/{experiment_name}/max_function_expanding_dist_4_{n_observations}.pickle",
+# f"datasets/{experiment_name}/min_function_expanding_dist_4_{n_observations}.pickle",
+# f"datasets/{experiment_name}/max_function_increasing_dist_5_{n_observations}.pickle",
+# f"datasets/{experiment_name}/min_function_increasing_dist_5_{n_observations}.pickle",
+# f"datasets/{experiment_name}/max_function_expanding_dist_5_{n_observations}.pickle",
+# f"datasets/{experiment_name}/min_function_expanding_dist_5_{n_observations}.pickle"
+# ]
 # %%
 np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 
-global_did_not_work = []
-global_did_not_finish = []
-
-test_methods = list_of_all_methods
+# global_did_not_work = []
+# global_did_not_finish = []
 
 
-# time_limit = 60*60
+#TODO! we limit only to the ones that completed for  did not work + binary_system_2000
+# test_methods = ALL_CLASSIFICATION
+test_methods = ALL_CLASSIFICATION
+# test_methods = list_of_all_methods
+
+# #! these methods performed to long (running solo on 200 observations)
+# for method in ['R_caret_classifier_gaussprLinear','R_caret_classifier_svmPoly','R_firm_classifier_knn','R_firm_classifier_treebag','R_firm_classifier_RRF','R_firm_classifier_ctree2','R_firm_classifier_evtree','R_firm_classifier_pda','R_firm_classifier_rpart','R_firm_classifier_cforest','R_firm_classifier_xyf','R_firm_classifier_C5.0Tree','R_firm_classifier_kknn','R_firm_classifier_gaussprRadial','R_firm_classifier_LogitBoost','R_firm_classifier_wsrf','R_firm_classifier_xgbLinear','R_firm_classifier_rf','R_firm_classifier_null','R_firm_classifier_monmlp']:
+#     test_methods.remove(method)
+
+# #! Thus, we remove all 'R_firm"
+# for method in test_methods:
+#     if 'R_firm_classifier' in method:
+#         test_methods.remove(method)
+
+
 time_limit = 60*60
+# time_limit = 5
 
-for data_path in tqdm(data_paths):
+# for data_path in tqdm(data_paths):
+def test_function(data_path):
+    # TODO! GA IK DIT NOG BIJ ANDERE DATASETS TESTEN?
+    not_finished_dict = {
+        'independent_easy_2000': [],
+        'min_function_equal_dist_2000': [],
+        'max_function_equal_dist_2000': ['shap_explainer_tree_classifier_RandomForestClassifier',
+                                        'shap_explainer_tree_classifier_ExtraTreesClassifier'],
+        'min_function_expanding_dist_3_2000': [],
+        'binary_system_2000': ['permutation_importance_classifier_CatBoostClassifier',
+                            'shap_explainer_tree_classifier_RandomForestClassifier',
+                            'shap_explainer_tree_classifier_CatBoostClassifier',
+                            'shap_explainer_tree_classifier_ExtraTreesClassifier'],
+        'decimal_system_2000': ['Gradient_Boosting_Classifier',
+                                'permutation_importance_classifier_CatBoostClassifier',
+                                'shap_explainer_tree_classifier_RandomForestClassifier',
+                                'shap_explainer_tree_classifier_CatBoostClassifier',
+                                'shap_explainer_tree_classifier_ExtraTreesClassifier'],
+        'min_function_increasing_dist_3_2000': ['shap_explainer_permutation_classifier_GradientBoostingClassifier',
+                                                'shap_explainer_permutation_classifier_AdaBoostClassifier',
+                                                'shap_explainer_permutation_classifier_RandomForestClassifier',
+                                                'shap_explainer_permutation_classifier_SVC',
+                                                'shap_explainer_permutation_classifier_LGBMClassifier',
+                                                'shap_explainer_kernel_classifier_SVC',
+                                                'R_caret_classifier_gaussprLinear'],
+        'pairwise_combined_min_2000': ['shap_explainer_permutation_classifier_GradientBoostingClassifier',
+                                    'shap_explainer_permutation_classifier_AdaBoostClassifier',
+                                    'shap_explainer_permutation_classifier_SVC',
+                                    'shap_explainer_kernel_classifier_KNeighborsClassifier',
+                                    'shap_explainer_kernel_classifier_GradientBoostingClassifier',
+                                    'shap_explainer_kernel_classifier_AdaBoostClassifier'],
+        'cloned_decimal_system_2000': ['shap_explainer_tree_classifier_RandomForestClassifier']
+    }
+
     data_name = os.path.splitext(os.path.basename(data_path))[0]
     experiment_name = str.split(data_path, '/')[1]
     X, Y, labelencoded_Y, onehotencoded_Y, dataset = load_dataset(data_path=f'datasets/{experiment_name}/{data_name}.pickle')
-    os.makedirs(f'results/{experiment_name}/{data_name}', exist_ok=True)
 
+    os.makedirs(f'results/{experiment_name}/{data_name}', exist_ok=True)
+    os.makedirs(f'results/{experiment_name}_individual/{data_name}', exist_ok=True)
 
     did_not_work = []
     not_finished_in_time = []
@@ -2248,52 +2308,225 @@ for data_path in tqdm(data_paths):
     time_dict = {}
 
     counter_save = -1
-    for name in tqdm(test_methods):
+    #for name in tqdm(test_methods[skip_first_methods:last_index_methods]):
+    for name in tqdm(test_methods[::-1]):
         counter_save += 1
-        with open(f'results/{experiment_name}/{data_name}/results_after_{counter_save}.pickle', 'wb') as f:
-            pickle.dump([result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
+        if counter_save % 4 != PROGRAM_NUMBER:
+            continue
+        print(data_name)
+        with open(f'results/{experiment_name}/{data_name}/results_after_{counter_save}-{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.pickle', 'wb') as f:
+            pickle.dump([X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
 
-        with suppress_stdout():
-            kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
+        # ! used to skip methods that have already been done
+        previous_results_paths = glob.glob(f'results/{experiment_name}_individual/{data_name}/*.pickle')
+        combined_string_previous = '\t'.join(previous_results_paths)
+        #! we now want to redo not_finished_dict
+        if name + '-' in combined_string_previous:
+            #continue
+            ##########
+            continue_var = 1
+            if data_name in not_finished_dict:
+                if name in not_finished_dict[data_name]:
+                    continue_var = 0
+                    # ! to limit it redoing everything multiple times we check if it is past a certain date
+                    for pathi in previous_results_paths:
+                        if name in pathi:
+                            mtime = os.path.getmtime(pathi)
+                            if mtime > 1657988004:
+                                continue_var = 1
+            if continue_var == 1:
+                continue
+            ##########
 
-            print('\033[94m')
-            try:
-                start_time = time.time()
+        # # ! remove combinations that were too slow in a smaller preliminary test
+        # if data_name in not_finished_dict:
+        #     if name in not_finished_dict[data_name]:
+        #         not_finished_in_time += [name]
+        #         # global_did_not_finish += [name]
+        #         result_dict[name] = np.array([np.nan] * X.shape[1])
+        #         time_dict[name] = '>{}'.format(time_limit)
+        #         with open(f'results/{experiment_name}_individual/{data_name}/{name}-{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.pickle', 'wb') as f:
+        #             pickle.dump([result_dict[name], time_dict[name], X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
+        #         print('\033[93m', name)
+        #         time.sleep(0.1)
+        #         continue
 
-                result = func_timeout.func_timeout(timeout=time_limit, func=determine_fi, kwargs=kwargs | {
-                                                'fi_method_name': fi_method_name, 'data_path': f'datasets/{experiment_name}/{data_name}.pickle'})
+        # with suppress_stdout():
+        kwargs, fi_method_name = initialize_experiment_variables(name, X, Y, labelencoded_Y)
 
-                end_time = time.time()
-                print("{} gives fi: {}".format(name, result))
-                result_dict[name] = result
-                time_dict[name] = end_time - start_time
-                assert len(result) == X.shape[1]
-                print('\033[92m', name)
-                time.sleep(0.1)
-            except func_timeout.FunctionTimedOut:
-                not_finished_in_time += [name]
-                global_did_not_finish += [name]
-                result_dict[name] = np.array([np.nan] * X.shape[1])
-                time_dict[name] = '>{}'.format(time_limit)
-                print('\033[93m', name)
-                time.sleep(0.1)
-            except:
-                did_not_work += [name]
-                print('\033[91m', name)
-                time.sleep(0.1)
+        print('\033[94m')
+        try:
+            start_time = time.time()
+
+            result = func_timeout.func_timeout(timeout=time_limit, func=determine_fi, kwargs=kwargs | {
+                                            'fi_method_name': fi_method_name, 'data_path': f'datasets/{experiment_name}/{data_name}.pickle'})
+            result= np.squeeze(result)
+            end_time = time.time()
+            print("{} gives fi: {}".format(name, result))
+            result_dict[name] = result
+            time_dict[name] = end_time - start_time
+            assert len(result) == X.shape[1]
+            print('\033[92m', name)
+            time.sleep(0.1)
+        except func_timeout.FunctionTimedOut:
+            not_finished_in_time += [name]
+            # global_did_not_finish += [name]
+            result_dict[name] = np.array([np.nan] * X.shape[1])
+            time_dict[name] = '>{}'.format(time_limit)
+            print('\033[93m', name)
+            time.sleep(0.1)
+        except:
+            did_not_work += [name]
+            result_dict[name] = 'did not work'
+            time_dict[name] = 'did not work'
+            print('\033[91m', name)
+            time.sleep(0.1)
+
+        with open(f'results/{experiment_name}_individual/{data_name}/{name}-{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.pickle', 'wb') as f:
+            pickle.dump([result_dict[name], time_dict[name], X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
 
 
     with open(f'results/{experiment_name}/{data_name}-{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.pickle', 'wb') as f:
         pickle.dump([X, Y, labelencoded_Y, onehotencoded_Y, dataset, result_dict, time_dict, did_not_work, not_finished_in_time, time_limit, test_methods], f)
+    # try:
+    #     shutil.rmtree(f'results/{experiment_name}/{data_name}')
+    # except:
+    #     None
+
+    # # remove methods that did not work or were not finished on time:
+    # for remove_method in not_finished_in_time + did_not_work:
+    #     test_methods.remove(remove_method)
+# %%
+# for name in list_of_all_methods:
+#     print(name)
+# import multiprocessing
+# if __name__ == '__main__':
+#     pool = multiprocessing.Pool(4)
+#     pool.map(test_function, data_paths)
+if __name__ == '__main__':
+    #gebruikt om de methoden eerlijk te verdelen
+    PROGRAM_NUMBER = int(sys.argv[1])
     try:
-        shutil.rmtree(f'results/{experiment_name}/{data_name}')
+        skip_first_datasets = int(sys.argv[2])
     except:
-        None
-        
-    # remove methods that did not work or were not finished on time:
-    for remove_method in not_finished_in_time + did_not_work:
-        test_methods.remove(remove_method)
+        skip_first_datasets = 0
+    try:
+        skip_first_methods = int(sys.argv[3])
+    except:
+        skip_first_methods = 0
+    try:
+        last_index_methods = min(int(sys.argv[4]), len(test_methods))
+    except:
+        last_index_methods = len(test_methods)
+    try:
+        reset_skip_first_methods = int(sys.argv[5])
+    except:
+        reset_skip_first_methods = skip_first_methods
+
+    print(PROGRAM_NUMBER)
+    # path_numbers = [i for i in range(len(data_paths)) if i % 4 == PROGRAM_NUMBER]
+    path_numbers = range(len(data_paths))
+    # selected_data_paths = [data_paths[i] for i in path_numbers][skip_first_datasets:]
+    #selected_data_paths = [data_paths[i] for i in path_numbers]
+    selected_data_paths = [data_paths[i] for i in path_numbers][::-1]
+
+    print(selected_data_paths)
+    for data_path in tqdm(selected_data_paths):
+        # if 'independent_easy' in data_path:
+        #     continue
+        test_function(data_path)
+        skip_first_methods = reset_skip_first_methods
+
+    #pywhatkit.sendwhatmsg_instantly('+31643552766', str(sys.argv), wait_time= 120, tab_close= True, close_time= 60)
+
 # %%
+# standard_regression_models = ['LogisticRegression', 'Ridge', 'LinearRegression', 'Lasso', 'SGDRegressor', 'MLPRegressor', 'SymbolicRegressor', 'XGBRegressor', 'XGBRFRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'DecisionTreeRegressor', 'RandomForestRegressor', 'CatBoostRegressor', 'LGBMRegressor', 'ExtraTreeRegressor', 'ExtraTreesRegressor']
+
+# tree_based_regression_models = ['XGBRegressor', 'XGBRFRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'DecisionTreeRegressor', 'RandomForestRegressor', 'CatBoostRegressor', 'LGBMRegressor', 'ExtraTreeRegressor', 'ExtraTreesRegressor']
 
 
-# %%
+# # # List of FI methods:
+# list_of_all_methods = []
+# # AdaBoost_Regressor (default)
+# list_of_all_methods += ['AdaBoost_Regressor']
+# # Random_Forest_Regressor (gini, entropy)
+# list_of_all_methods += ['Random_Forest_Regressor']
+# # Extra_Trees_Regressor (gini, entropy)
+# list_of_all_methods += ['Extra_Trees_Regressor']
+# # Gradient_Boosting_Regressor (default)
+# list_of_all_methods += ['Gradient_Boosting_Regressor']
+# # permutation_importance_regressor
+# list_of_all_methods += ['permutation_importance_regressor_' + i for i in standard_regression_models]
+# # shap_explainer_tree_regressor (XGBRegressor, XGBRFRegressor)
+# list_of_all_methods += ['shap_explainer_tree_regressor_' + i for i in tree_based_regression_models]
+# # shap_explainer_linear_regressor (Ridge, LinearRegression, Lasso, SGDRegressor)
+# list_of_all_methods += ['shap_explainer_linear_regressor_' + i for i in ['LogisticRegression', 'Ridge', 'LinearRegression', 'Lasso', 'SGDRegressor']]
+# # shap_explainer_permutation_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
+# list_of_all_methods += ['shap_explainer_permutation_regressor_' + i for i in standard_regression_models]
+# # shap_explainer_partition_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
+# list_of_all_methods += ['shap_explainer_partition_regressor_' + i for i in standard_regression_models]
+# # shap_explainer_sampling_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
+# list_of_all_methods += ['shap_explainer_sampling_regressor_' + i for i in standard_regression_models]
+# # shap_explainer_kernel_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
+# list_of_all_methods += ['shap_explainer_kernel_regressor_' + i for i in standard_regression_models]
+# # shap_explainer_exact_regressor (Ridge, LinearRegression, Lasso, SGDRegressor, MLPRegressor, XGBRegressor, XGBRFRegressor, SymbolicRegressor)
+# list_of_all_methods += ['shap_explainer_exact_regressor_' + i for i in standard_regression_models]
+# # R_caret_regressor
+# list_of_all_methods += ['R_caret_regressor_' + i for i in
+#                         ['widekernelpls', 'pcr', 'knn', 'bayesglm', 'GFS.FR.MOGUL', 'qrnn', 'treebag', 'rqlasso', 'nnet', 'svmRadial', 'nnls', 'ctree2', 'evtree', 'rpart', 'cforest', 'svmLinear', 'enet', 'FIR.DM', 'xyf', 'HYFIS', 'leapSeq', 'glm', 'glm.nb', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'ppr', 'DENFIS', 'svmLinear2', 'bstSm', 'lm', 'lars2', 'pls', 'rvmRadial', 'xgbLinear', 'simpls', 'rf', 'null', 'monmlp', 'Rborist', 'relaxo', 'GFS.THRIFT', 'mlpWeightDecay', 'randomGLM', 'mlpML', 'ctree', 'brnn', 'mlpWeightDecayML', 'kernelpls', 'krlsRadial', 'spikeslab', 'svmRadialSigma', 'lasso', 'glmnet', 'bstTree', 'dnn', 'icr', 'leapBackward', 'qrf', 'leapForward', 'BstLm', 'ANFIS', 'glmboost', 'mlp', 'rpart1SE', 'lmStepAIC', 'pcaNNet', 'lars', 'glmStepAIC', 'rpart2', 'gaussprPoly', 'ridge', 'FS.HGD', 'rbfDDA', 'gaussprLinear', 'svmPoly', 'penalized']]
+
+# # rfi_regressor
+# list_of_all_methods += ['rfi_regressor_' + i for i in standard_regression_models]
+# # cfi_regressor
+# list_of_all_methods += ['cfi_regressor_' + i for i in standard_regression_models]
+
+# # featurevec_regressor
+# list_of_all_methods += ['featurevec_regressor']
+
+# # varimp_regressor
+# list_of_all_methods += ['R_varimp_regressor']
+
+# # pimp_regressor
+# list_of_all_methods += ['R_pimp_regressor']
+
+# # vip_sum_regressor
+# list_of_all_methods += ['R_vip_sum_regressor_' + i for i in ['pls', 'spls']]
+
+# # vip_weighted_X_regressor
+# list_of_all_methods += ['R_vip_weighted_X_regressor_' + i for i in ['pls', 'spls']]
+
+# # vip_weighted_Y_regressor
+# list_of_all_methods += ['R_vip_weighted_Y_regressor_' + i for i in ['pls', 'spls']]
+
+# # treeinterpreter_regressor
+# list_of_all_methods += ['treeinterpreter_regressor_' + i for i in tree_based_regression_models]
+
+# # booster_regressor (XGBRegressor, XGBRFRegressor)
+# list_of_all_methods += ['booster_regressor_' + j + '_' + i for j in ['weight', 'gain', 'cover'] for i in tree_based_regression_models]
+
+# # sklearn_feature_selection_regressor
+# list_of_all_methods += ['sklearn_feature_selection_regressor_' + i for i in ['chi2', 'f_regression', 'r_regression', 'mutual_info_regression']]
+
+# # R_FSinR_regressor
+# list_of_all_methods += ['R_FSinR_regressor_' + i for i in ['binaryConsistency', 'chiSquared', 'cramer', 'gainRatio', 'giniIndex',
+#                                                            'IEConsistency', 'IEPConsistency', 'mutualInformation',  'roughsetConsistency', 'ReliefFeatureSetMeasure', 'symmetricalUncertain']]
+# # sage_regressor
+# list_of_all_methods += ['sage_regressor_' + j + '_' + i for j in ['IteratedEstimator', 'PermutationEstimator', 'KernelEstimator', 'SignEstimator'] for i in standard_regression_models]
+
+# # QII_averaged_regressor
+# list_of_all_methods += ['QII_averaged_regressor_' + j + '_' + i for j in ['shapley', 'banzhaf'] for i in standard_regression_models]
+
+# # rebelosa_regressor
+# list_of_all_methods += ['rebelosa_regressor_' + i for i in ['RF', 'Garson_NN1', 'Garson_NN2', 'VIANN_NN1', 'VIANN_NN2', 'LOFO_NN1', 'LOFO_NN2']]
+
+# # relief_regressor
+# list_of_all_methods += ['relief_regressor_' + i for i in ['Relief', 'ReliefF', 'RReliefF']]
+
+# # R_firm_regressor
+# list_of_all_methods += ['R_firm_regressor_' + i for i in
+#                         ['widekernelpls', 'pcr', 'knn', 'bayesglm', 'GFS.FR.MOGUL', 'qrnn', 'treebag', 'rqlasso', 'nnet', 'svmRadial', 'nnls', 'ctree2', 'evtree', 'rpart', 'cforest', 'svmLinear', 'enet', 'FIR.DM', 'xyf', 'HYFIS', 'leapSeq', 'glm', 'glm.nb', 'avNNet', 'kknn', 'svmRadialCost', 'gaussprRadial', 'ppr', 'DENFIS', 'svmLinear2', 'bstSm', 'lm', 'lars2', 'pls', 'rvmRadial', 'xgbLinear', 'simpls', 'rf', 'null', 'monmlp', 'Rborist', 'relaxo', 'GFS.THRIFT', 'mlpWeightDecay', 'randomGLM', 'mlpML', 'ctree', 'brnn', 'mlpWeightDecayML', 'kernelpls', 'krlsRadial', 'spikeslab', 'svmRadialSigma', 'lasso', 'glmnet', 'bstTree', 'dnn', 'icr', 'leapBackward', 'qrf', 'leapForward', 'BstLm', 'ANFIS', 'glmboost', 'mlp', 'rpart1SE', 'lmStepAIC', 'pcaNNet', 'lars', 'glmStepAIC', 'rpart2', 'gaussprPoly', 'ridge', 'FS.HGD', 'rbfDDA', 'gaussprLinear', 'svmPoly', 'penalized']]
+
+# test_methods = list_of_all_methods
+# if __name__ == '__main__':
+#     pool = multiprocessing.Pool(4)
+#     pool.map(test_function, data_paths)

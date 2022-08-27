@@ -197,9 +197,12 @@ class feature_importance_class:
 
     # Functie die bepaald of er gestopt moet worden met 1 sequence
     def early_sequence_stopping(self) -> bool:
-        if self.UD_all_X_Y - self.UD_after <= self.epsilon * self.UD_Y_Y:
+        #TODO: For now, we don't want early stopping, so:
+        return(False)
+        # if self.UD_all_X_Y - self.UD_after <= self.epsilon * self.UD_Y_Y:
+        if self.UD_all_X_Y - self.UD_after <= self.epsilon * self.UD_all_X_Y:
             return(True)
-        if len(self.current_sequence) >= self.limit_n_variables:
+        if len(self.current_sequence) > self.limit_n_variables:
             return(True)
 
         return(False)
@@ -219,9 +222,17 @@ class feature_importance_class:
         try:
             self.UD_after = self.computed_ud_dependencies[frozenset(flatten_and_np_array(self.current_sequence))]
         except:
-            self.UD_after = unordered_bp_dependency(dataset= self.dataset, X_indices= flatten_and_np_array(self.current_sequence), Y_indices= self.Y_indices, binning_indices= None, format_input= False)
-            # Update computed dependecies dict
-            self.computed_ud_dependencies[frozenset(flatten_and_np_array(self.current_sequence))] = self.UD_after
+            if self.early_sequence_stopping() == True:
+                # all remaining dependency is divided equally among the remaining sequence
+                self.UD_after = self.UD_before + (self.UD_all_X_Y - self.UD_before) / (len(self.total_sequence) - len(self.current_sequence))
+                # print(self.UD_before)
+                # print(self.UD_after)
+                # print(self.total_sequence)
+                # print(self.current_sequence)
+            else:
+                self.UD_after = unordered_bp_dependency(dataset= self.dataset, X_indices= flatten_and_np_array(self.current_sequence), Y_indices= self.Y_indices, binning_indices= None, format_input= False)
+                # Update computed dependecies dict
+                self.computed_ud_dependencies[frozenset(flatten_and_np_array(self.current_sequence))] = self.UD_after
 
 
         self.new_ud_value = self.UD_after - self.UD_before
@@ -286,7 +297,7 @@ class feature_importance_class:
 
 
 
-def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120, sequence_strategy= 'exhaustive', epsilon= 0.0, limit_n_variables= np.inf, binning_indices= None, binning_strategy = 'auto', midway_binning = False, compute_parallel_ud = True):
+def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120, sequence_strategy= 'exhaustive', epsilon= 0.0, limit_n_variables= np.inf, binning_indices= None, binning_strategy = 'auto', midway_binning = False, compute_parallel_ud = False):
 
     bp_class = feature_importance_class(
         dataset= dataset,
@@ -308,18 +319,20 @@ def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120
     while(bp_class.stop_generating_sequences() == False):
 
         bp_class.generate_shapley_sequence()
+        # print(bp_class.total_sequence)
         bp_class.reset_after_sequence()
 
         #print("Newly generated sequence: {}".format(bp_class.total_sequence))
-
-        while(bp_class.early_sequence_stopping() == False):
+        for _ in range(len(bp_class.total_sequence)):
+        # while(bp_class.early_sequence_stopping() == False):
             bp_class.next_variable_sequence()
-
+            # print(bp_class.current_sequence)
             #print("Current sequence: {}".format(bp_class.current_sequence))
-
+            # print(bp_class.early_sequence_stopping())
             bp_class.determine_shapley_value()
             bp_class.update_shapley_value()
-
+            # print(bp_class.new_ud_value)
+            # print(bp_class.early_sequence_stopping())
 
     print('Average UD Shapley {}'.format(bp_class.average_shapley_values))
     print('Which sums up to: {}'.format(sum(bp_class.average_shapley_values.values())))
@@ -332,7 +345,8 @@ def bp_feature_importance(dataset, X_indices, Y_indices, stopping_strategy = 120
     print('UD of all X_variables: {}'.format(bp_class.UD_all_X_Y))
     print('UD of Y, Y: {}'.format(bp_class.UD_Y_Y))
     print('Dependency of all X_variables: {}'.format(bp_class.UD_all_X_Y /bp_class.UD_Y_Y ))
-    print("Number of sequences: {}".format(bp_class.n_sequences_counter))
+    print("Number of sequences: {}".format(bp_class.n_sequences_counter + 1))
+    print(bp_class.computed_ud_dependencies)
     return(bp_class.average_shapley_values)
 
 # %%

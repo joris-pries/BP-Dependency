@@ -1,0 +1,40 @@
+Date: 16/7/2022
+Time: 21:12
+Phone Number: +31643552766
+Message: Message 1
+--------------------
+Date: 16/7/2022
+Time: 21:14
+Phone Number: +31643552766
+Message: Message 1
+--------------------
+Date: 16/7/2022
+Time: 21:23
+Phone Number: +31643552766
+Message: Message 1
+--------------------
+Date: 16/7/2022
+Time: 21:26
+Phone Number: +31643552766
+Message: Message 1
+--------------------
+Date: 16/7/2022
+Time: 21:57
+Phone Number: +31643552766
+Message: ['.\\all_fi_measures.py', '0']
+--------------------
+Date: 16/7/2022
+Time: 22:5
+Phone Number: +31643552766
+Message: Message 1
+--------------------
+Date: 19/7/2022
+Time: 19:59
+Phone Number: +31643552766
+Message: ['.\\all_fi_measures.py', '3']
+--------------------
+Date: 20/7/2022
+Time: 1:56
+Phone Number: +31643552766
+Message: ['.\\all_fi_measures.py', '1']
+--------------------
