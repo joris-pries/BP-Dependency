@@ -1,4 +1,4 @@
-# bp_dependency
+# The bp_dependency package
 
 bp_dependency is a Python package for determining the Berkelmans-Pries dependency between `Y` and `X`.
 
