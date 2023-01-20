@@ -23,8 +23,9 @@ pip install bp_dependency
 ### Windows users
 
 ```bash
-python -m pip install --upgrade bp_dependency
+python -m pip install bp_dependency
 ```
+
 
 <!-- ```bash
 python -m pip install bp_dependency
@@ -33,8 +34,9 @@ python -m pip install bp_dependency
 or
 
 ```bash
-py -m pip install --upgrade bp_dependency
+py -m pip install bp_dependency
 ```
+
 
 <!-- ```bash
 py -m pip install bp_dependency
