@@ -68,12 +68,12 @@ The function `unordered_bp_dependency` gives the following output:
 
 Let the dataset be given by
 
-| X | Y |
-| :-: | :-: |
-| 0 | 0 |
-| 1 | 1 |
-| 0 | 2 |
-| 1 | 3 |
+| $X$ | $Y$ |
+| :---: | :---: |
+|   0   |   0   |
+|   1   |   1   |
+|   0   |   2   |
+|   1   |   3   |
 
 where each row is as likely to be drawn. Then, `UD(X,Y)` can be determined by:
 
@@ -112,12 +112,12 @@ The function `bp_dependency` gives the following output:
 
 Let the dataset be given by
 
-| X | Y |
-| :-: | :-: |
-| 0 | 0 |
-| 1 | 1 |
-| 0 | 2 |
-| 1 | 3 |
+| $X$ | $Y$ |
+| :---: | :---: |
+|   0   |   0   |
+|   1   |   1   |
+|   0   |   2   |
+|   1   |   3   |
 
 where each row is as likely to be drawn. Then, `Dep(Y|X)` can be determined by:
 
@@ -154,16 +154,16 @@ The function `bin_data` gives the following output:
 
 Let the dataset be given by
 
-| X |
-| :-: |
-| 0 |
-| 1 |
-| 2 |
-| 3 |
-| 5 |
-| 6 |
-| 7 |
-| 8 |
+| $X$ |
+| :---: |
+|   0   |
+|   1   |
+|   2   |
+|   3   |
+|   5   |
+|   6   |
+|   7   |
+|   8   |
 
 where each row is as likely to be drawn. This dataset can then be binned by:
 
