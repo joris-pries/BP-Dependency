@@ -26,7 +26,6 @@ pip install bp_dependency
 python -m pip install bp_dependency
 ```
 
-
 <!-- ```bash
 python -m pip install bp_dependency
 ``` -->
@@ -36,7 +35,6 @@ or
 ```bash
 py -m pip install bp_dependency
 ```
-
 
 <!-- ```bash
 py -m pip install bp_dependency
@@ -74,13 +72,13 @@ Let the dataset be given by
 | :-: | :-: |
 | 0 | 0 |
 | 1 | 1 |
-| 2 | 0 |
-| 3 | 1 |
+| 0 | 2 |
+| 1 | 3 |
 
 where each row is as likely to be drawn. Then, `UD(X,Y)` can be determined by:
 
 ```python
- X_indices, Y_indices, dataset = (np.array([1]), np.array([0]), np.array([[0,0], [1,1], [2,0],[3,1]]))
+ X_indices, Y_indices, dataset = (np.array([0]), np.array([1]), np.array([[0,0], [1,1], [0,2],[1,3]]))
  print(unordered_bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
 ```
 
@@ -118,13 +116,13 @@ Let the dataset be given by
 | :-: | :-: |
 | 0 | 0 |
 | 1 | 1 |
-| 2 | 0 |
-| 3 | 1 |
+| 0 | 2 |
+| 1 | 3 |
 
 where each row is as likely to be drawn. Then, `Dep(Y|X)` can be determined by:
 
 ```python
- X_indices, Y_indices, dataset = (np.array([1]), np.array([0]), np.array([[0,0], [1,1], [2,0],[3,1]]))
+ X_indices, Y_indices, dataset = (np.array([0]), np.array([1]), np.array([[0,0], [1,1], [0,2],[1,3]]))
  print(bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
 ```
 
