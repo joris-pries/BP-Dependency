@@ -91,7 +91,7 @@ with output:
 
 ### bp_dependency
 
-This function is used to determine the Berkelmans-Pries dependency (Dep(Y|X)) of `Y` on `X`. If `Y` is constant, a default value of -1.0 is returned.
+This function is used to determine the Berkelmans-Pries dependency (Dep(Y|X)) of `Y` on `X`. If `Y` is constant, a default value of np.NaN is returned.
 
 #### Input
 
@@ -107,7 +107,7 @@ This function is used to determine the Berkelmans-Pries dependency (Dep(Y|X)) of
 
 The function `bp_dependency` gives the following output:
 
-* `float`: The Berkelmans-Pries dependency score of `Y` on `X`. If `Y` is constant, -1.0 is returned.
+* `float`: The Berkelmans-Pries dependency score of `Y` on `X`. If `Y` is constant, np.NaN is returned.
 
 #### Example
 

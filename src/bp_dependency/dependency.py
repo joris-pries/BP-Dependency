@@ -201,7 +201,7 @@ def bp_dependency(dataset, X_indices, Y_indices, binning_indices= None, binning_
 
     Returns:
     --------
-        float: The Berkelmans-Pries dependency score of Y on X. If Y is constant, -1.0 is returned.
+        float: The Berkelmans-Pries dependency score of Y on X. If Y is constant, np.NaN is returned.
 
     Raises:
     --------
@@ -218,13 +218,16 @@ def bp_dependency(dataset, X_indices, Y_indices, binning_indices= None, binning_
         0.6666666666666666
     """
 
+    if is_Y_constant(Y_indices, dataset) == True:
+        return(np.NaN)
+
     numerator_result = unordered_bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices, binning_indices= binning_indices, binning_strategy = binning_strategy, midway_binning = midway_binning, format_input = format_input)
 
     denominator_result = unordered_bp_dependency(dataset= dataset, X_indices= Y_indices, Y_indices= Y_indices, binning_indices= binning_indices, binning_strategy = binning_strategy, midway_binning = midway_binning, format_input = format_input)
 
 
     if denominator_result == 0.0:
-        return(-1.0)
+        return(np.NaN)
     else:
         return(numerator_result / denominator_result)
 
