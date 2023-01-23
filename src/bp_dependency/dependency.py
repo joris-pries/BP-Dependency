@@ -138,7 +138,7 @@ def unordered_bp_dependency(dataset, X_indices, Y_indices, binning_indices= None
 
     Example:
     --------
-        >>> X_indices, Y_indices, dataset = (np.array([1]), np.array([0]), np.array([[0,0], [1,1], [2,0],[3,1]]))
+        >>> X_indices, Y_indices, dataset = (np.array([0]), np.array([1]), np.array([[0,0], [1,1], [0,2],[1,3]]))
         >>> print(unordered_bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
         1.0
     """
@@ -213,7 +213,7 @@ def bp_dependency(dataset, X_indices, Y_indices, binning_indices= None, binning_
 
     Example:
     --------
-        >>> X_indices, Y_indices, dataset = (np.array([1]), np.array([0]), np.array([[0,0], [1,1], [2,0],[3,1]]))
+        >>> X_indices, Y_indices, dataset = (np.array([0]), np.array([1]), np.array([[0,0], [1,1], [0,2],[1,3]]))
         >>> print(bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
         0.6666666666666666
     """
@@ -228,9 +228,5 @@ def bp_dependency(dataset, X_indices, Y_indices, binning_indices= None, binning_
     else:
         return(numerator_result / denominator_result)
 
-
-# %%
-# X_indices, Y_indices, dataset = (np.array([1]), np.array([0]), np.array([[0,0], [1,1], [2,0],[3,1]]))
-# print(bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
 
 # %%
