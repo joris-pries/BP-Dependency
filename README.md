@@ -40,6 +40,7 @@ py -m pip install bp_dependency
 py -m pip install bp_dependency
 ``` -->
 
+
 ## How to use:
 
 The Berkelmans-Pries dependency of `Y` on `X` (notation Dep(Y|X)) is defined by `UD(X,Y) / UD(Y,Y)`, where `UD` is called the 'unordered dependency function'. For the theoretical formulation, see our paper. This package provides three functions: `unordered_bp_dependency`, `bp_dependency` and `bin_data`. We will now explain each function.
@@ -68,17 +69,17 @@ The function `unordered_bp_dependency` gives the following output:
 
 Let the dataset be given by
 
-| $X$ | $Y$ |
-| :---: | :---: |
-|   0   |   0   |
-|   1   |   1   |
-|   0   |   2   |
-|   1   |   3   |
+| X | Y |
+| :-: | :-: |
+| 0 | 0 |
+| 1 | 1 |
+| 2 | 0 |
+| 3 | 1 |
 
 where each row is as likely to be drawn. Then, `UD(X,Y)` can be determined by:
 
 ```python
- X_indices, Y_indices, dataset = (np.array([0]), np.array([1]), np.array([[0,0], [1,1], [0,2],[1,3]]))
+ X_indices, Y_indices, dataset = (np.array([1]), np.array([0]), np.array([[0,0], [1,1], [2,0],[3,1]]))
  print(unordered_bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
 ```
 
@@ -112,17 +113,17 @@ The function `bp_dependency` gives the following output:
 
 Let the dataset be given by
 
-| $X$ | $Y$ |
-| :---: | :---: |
-|   0   |   0   |
-|   1   |   1   |
-|   0   |   2   |
-|   1   |   3   |
+| X | Y |
+| :-: | :-: |
+| 0 | 0 |
+| 1 | 1 |
+| 2 | 0 |
+| 3 | 1 |
 
 where each row is as likely to be drawn. Then, `Dep(Y|X)` can be determined by:
 
 ```python
- X_indices, Y_indices, dataset = (np.array([0]), np.array([1]), np.array([[0,0], [1,1], [0,2],[1,3]]))
+ X_indices, Y_indices, dataset = (np.array([1]), np.array([0]), np.array([[0,0], [1,1], [2,0],[3,1]]))
  print(bp_dependency(dataset= dataset, X_indices= X_indices, Y_indices= Y_indices))
 ```
 
@@ -154,16 +155,16 @@ The function `bin_data` gives the following output:
 
 Let the dataset be given by
 
-| $X$ |
-| :---: |
-|   0   |
-|   1   |
-|   2   |
-|   3   |
-|   5   |
-|   6   |
-|   7   |
-|   8   |
+| X |
+| :-: |
+| 0 |
+| 1 |
+| 2 |
+| 3 |
+| 5 |
+| 6 |
+| 7 |
+| 8 |
 
 where each row is as likely to be drawn. This dataset can then be binned by:
 
